@@ -1,0 +1,43 @@
+{
+    "accountAssociation": {
+      "header": "",
+      "payload": "",
+      "signature": ""
+    },
+    "frame": {
+      "version": "1",
+      "name": "Base 2048",
+      "iconUrl": "https://base2048-seven.vercel.app/icon.png",
+      "splashImageUrl": "https://base2048-seven.vercel.app/splash.png",
+      "splashBackgroundColor": "#0052FF",
+      "homeUrl": "https://base2048-seven.vercel.app",
+      "webhookUrl": "https://base2048-backend-production.up.railway.app/api/webhook"
+    },
+    "miniapp": {
+      "version": "1",
+      "name": "Base 2048",
+      "subtitle": "Classic puzzle game on Base",
+      "description": "Play the classic 2048 puzzle game with blockchain integration. Register your on-chain player name, compete on the global leaderboard, and prove your skills on Base network.",
+      "screenshotUrls": [
+        "https://base2048-seven.vercel.app/screenshot.png"
+      ],
+      "iconUrl": "https://base2048-seven.vercel.app/icon.png",
+      "splashImageUrl": "https://base2048-seven.vercel.app/splash.png",
+      "splashBackgroundColor": "#0052FF",
+      "homeUrl": "https://base2048-seven.vercel.app",
+      "webhookUrl": "https://base2048-backend-production.up.railway.app/api/webhook",
+      "primaryCategory": "games",
+      "tags": [
+        "puzzle",
+        "game",
+        "2048",
+        "blockchain",
+        "leaderboard"
+      ],
+      "heroImageUrl": "https://base2048-seven.vercel.app/hero.png",
+      "tagline": "Slide, merge, and climb the leaderboard!",
+      "ogTitle": "Base 2048 - Classic Puzzle Game on Base",
+      "ogDescription": "Play 2048 with on-chain player names and global leaderboard on Base blockchain",
+      "ogImageUrl": "https://base2048-seven.vercel.app/og-image.png"
+    }
+  }
