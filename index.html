@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0052FF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Base 2048</title>
+  
+  <!-- ⭐ ethers.js через АЛЬТЕРНАТИВНЫЕ CDN (пробуем несколько) -->
+  <!-- Вариант 1: jsDelivr (обычно работает везде) -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" 
+          type="text/javascript"
+          crossorigin="anonymous"></script>
+  
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/wallet.css">
+  <link rel="stylesheet" href="css/name-registration.css">
+  <link rel="stylesheet" href="css/leaderboard.css">
+</head>
+<body>
+  <div class="container">
+    <!-- START MENU -->
+    <div class="start-screen" id="startScreen">
+      <h1>2048</h1>
+      <div class="best-score-display">
+        <div class="label">Best Score</div>
+        <div class="value" id="startBestScore">0</div>
+      </div>
+      <button class="primary-btn" onclick="startGame()">Play</button>
+    </div>
+
+    <!-- GAME UI -->
+    <div class="game-ui hidden" id="gameUI">
+
+      <!-- Score Row with Wallet Button -->
+      <div class="score-row">
+        <div class="score-box">
+          <div class="label">Score</div>
+          <div class="value" id="score">0</div>
+        </div>
+        <div class="score-box best">
+          <div class="label">Best</div>
+          <div class="value" id="bestScore">0</div>
+        </div>
+        <!-- Wallet button will be added here by JavaScript -->
+      </div>
+
+      <!-- Game Grid -->
+      <div class="game-with-controls">
+        <div class="game">
+          <div class="grid-container" id="gridContainer">
+            <div class="grid-background" id="gridBackground"></div>
+            <div class="grid-cells" id="grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls Row -->
+      <div class="controls-row controls-row--bottom">
+        <button class="control-btn" id="backBtn" title="Main Menu">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 10L10 3L17 10M4 9V17H7V13H13V17H16V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="control-btn" id="undoBtn" title="Undo">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5L3 10L8 15M3 10H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="control-btn" id="restartBtn" title="Restart">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C12.7614 3 15.1307 4.62886 16.2426 7M16 3V7H12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="control-btn sound-btn" id="soundBtn" title="Sound">
+          <svg class="sound-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 5L7 8H4V12H7L11 15V5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path class="sound-wave" d="M14 7C15.1046 8.10457 15.1046 11.8954 14 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <!-- Game Stats -->
+      <div class="game-stats">
+        <div class="stat-item">
+          <span class="stat-label">TIME</span>
+          <span class="stat-value" id="timer">00:00</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">MOVES</span>
+          <span class="stat-value" id="moves">0</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Score popup animation -->
+  <div class="score-popup" id="scorePopup"></div>
+
+  <!-- Game Over -->
+  <div class="overlay hidden" id="gameOver">
+    <div class="modal game-over-modal">
+      <h2>Game Over</h2>
+      <div class="final-score-container">
+        <div class="final-score-value" id="finalScore">0</div>
+        <div class="best-score-note">Best: <span id="bestScoreNote">0</span></div>
+      </div>
+      <p id="newRecordMsg" class="new-record hidden">🎉 New Record!</p>
+      <div class="game-over-buttons">
+        <button id="signAndSendScore" class="coral-btn hidden">Submit</button>
+        <button id="restartFromGameOver" class="secondary-btn">Again</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Restart confirmation -->
+  <div class="overlay hidden" id="restartConfirm">
+    <div class="modal">
+      <h2>Restart game?</h2>
+      <p class="warning-text">Your current progress will be lost</p>
+      <button id="confirmRestart">Restart</button>
+      <button id="cancelRestart" class="secondary-btn">Cancel</button>
+    </div>
+  </div>
+
+  <!-- WalletConnect SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js"></script>
+  
+  <!-- Game Scripts (as modules) -->
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>
