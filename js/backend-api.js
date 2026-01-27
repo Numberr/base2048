@@ -4,7 +4,7 @@
 
 const BACKEND_CONFIG = {
   // Change this to your backend URL when deployed
-  API_URL: 'http://localhost:3000/api',
+  API_URL: 'https://your-backend.railway.app/api'
   
   // For production:
   // API_URL: 'https://your-backend-domain.com/api'
