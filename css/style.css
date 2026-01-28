@@ -445,10 +445,17 @@ body {
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-  /* ОПТИМИЗАЦИЯ: Hardware acceleration */
-  will-change: transform;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+  
+  /* АНИМАЦИЯ ОПТИМИЗАЦИЯ: Изолирует перерисовку */
+  contain: layout style paint;
+  
+  /* Предотвращает мерцание */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  
+  /* GPU acceleration */
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
 }
 
 .cell::before {
@@ -632,30 +639,24 @@ body {
 
 @keyframes appear {
   0% {
-    transform: scale(0);
+    transform: scale3d(0, 0, 1);
     opacity: 0;
   }
-  50% {
-    transform: scale(1.1);
-  }
   100% {
-    transform: scale(1);
+    transform: scale3d(1, 1, 1);
     opacity: 1;
   }
 }
 
 @keyframes merge {
   0% {
-    transform: scale(1);
+    transform: scale3d(1, 1, 1);
   }
   50% {
-    transform: scale(1.15);
-    box-shadow: 0 8px 32px rgba(0, 212, 255, 0.6);
-    /* ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â²ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Â°ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¹Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã‚Â Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â»ÃƒÂÃ‚ÂµÃƒÂÃ‚Â´ */
-    filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.8));
+    transform: scale3d(1.12, 1.12, 1);
   }
   100% {
-    transform: scale(1);
+    transform: scale3d(1, 1, 1);
   }
 }
 
@@ -676,10 +677,12 @@ body {
 
 .cell.new {
   animation: appear 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
 }
 
 .cell.merged {
   animation: merge 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
 }
 
 /* === Score Popup === */
@@ -1070,6 +1073,47 @@ body {
   }
 }
 
+
+
+/* === АНИМАЦИЯ ОПТИМИЗАЦИЯ: Упрощённые анимации для мобильных === */
+@media (max-width: 768px) {
+  /* Более простые анимации - 2 шага вместо 3 */
+  @keyframes appear-mobile {
+    from {
+      opacity: 0;
+      transform: scale3d(0.85, 0.85, 1);
+    }
+    to {
+      opacity: 1;
+      transform: scale3d(1, 1, 1);
+    }
+  }
+  
+  @keyframes merge-mobile {
+    0% {
+      transform: scale3d(1, 1, 1);
+    }
+    50% {
+      transform: scale3d(1.08, 1.08, 1);
+    }
+    100% {
+      transform: scale3d(1, 1, 1);
+    }
+  }
+  
+  .cell.new {
+    animation: appear-mobile 0.15s ease-out;
+  }
+  
+  .cell.merged {
+    animation: merge-mobile 0.15s ease-out;
+  }
+  
+  /* Упрощаем transition */
+  .cell {
+    transition: all 0.1s ease-out;
+  }
+}
 
 /* === ОПТИМИЗАЦИЯ 3.1: Desktop-only эффекты === */
 @media (min-width: 1024px) {
