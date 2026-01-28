@@ -71,9 +71,10 @@ body {
 
 .container {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  min-height: calc(var(--vh, 1vh) * 100);
+  /* КРИТИЧЕСКИЙ ФИКС: НЕ используем min-height и justify-content */
+  /* Это вызывает "плавание" при изменении высоты viewport */
   padding: 20px;
   padding-left: calc(20px + var(--safe-area-left));
   padding-right: calc(20px + var(--safe-area-right));
@@ -386,9 +387,9 @@ body {
 /* === Grid Container === */
 .grid-container {
   position: relative;
-  /* ОПТИМИЗАЦИЯ 2.2: Адаптивная ширина для стабильности */
-  width: 100%;
-  max-width: min(90vw, 500px);
+  /* КРИТИЧЕСКИЙ ФИКС: Размер от ШИРИНЫ, не от высоты */
+  width: min(90vw, 420px);
+  aspect-ratio: 1 / 1; /* Квадрат, НЕ зависит от vh */
   background: var(--grid-surface);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
