@@ -249,26 +249,24 @@ class WalletManager {
     try {
       const timestamp = Date.now();
       const nonce = Math.random().toString(36).substring(7);
+      const issuedAt = new Date(timestamp).toISOString();
+      const domain = window.location.host;
+      const uri = window.location.origin;
       
-      // SIWE-compliant message
-      const message = [
-        'Base 2048 - Sign In',
-        '',
-        'Welcome to Base 2048!',
-        'Sign this message to authenticate your wallet.',
-        '',
-        `Address: ${address}`,
-        `Timestamp: ${new Date(timestamp).toISOString()}`,
-        `Nonce: ${nonce}`,
-        '',
-        'This request will not trigger any blockchain transaction or cost any gas fees.',
-        '',
-        'URI: ' + window.location.origin,
-        'Version: 1',
-        'Chain ID: 8453'
-      ].join('\n');
+      // Proper SIWE (EIP-4361) format - required for Base App compatibility
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${address}
+
+Sign this message to authenticate your wallet and play Base 2048. This will not trigger any blockchain transaction or cost any gas fees.
+
+URI: ${uri}
+Version: 1
+Chain ID: 8453
+Nonce: ${nonce}
+Issued At: ${issuedAt}`;
 
       console.log('[Wallet] Requesting signature...');
+      console.log('[Wallet] SIWE Message:', message);
       
       const signature = await provider.request({
         method: 'personal_sign',
