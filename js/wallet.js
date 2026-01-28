@@ -249,19 +249,34 @@ class WalletManager {
     try {
       const timestamp = Date.now();
       const nonce = Math.random().toString(36).substring(7);
-      const issuedAt = new Date(timestamp).toISOString();
       const domain = window.location.host;
       const uri = window.location.origin;
+      const issuedAt = new Date(timestamp).toISOString();
       
-      // Proper SIWE (EIP-4361) format - required for Base App compatibility
+      // Получаем актуальный chainId с провайдера,
+      // чтобы он точно совпадал с сетью в кошельке (Base App это строго проверяет)
+      let chainIdNumeric = 8453; // значение по умолчанию — Base mainnet
+      try {
+        const chainIdRaw = await provider.request({ method: 'eth_chainId' });
+        if (typeof chainIdRaw === 'string') {
+          chainIdNumeric = parseInt(chainIdRaw, 16);
+        } else if (typeof chainIdRaw === 'number') {
+          chainIdNumeric = chainIdRaw;
+        }
+      } catch (e) {
+        console.warn('[Wallet] Could not read chainId, falling back to Base mainnet (8453)', e);
+      }
+      
+      // Строгий формат SIWE (EIP‑4361), максимально близкий к официальному примеру.
+      // Некоторые кошельки (в т.ч. Base/Coinbase) парсят его и отклоняют нестандартные варианты.
       const message = `${domain} wants you to sign in with your Ethereum account:
 ${address}
 
-Sign this message to authenticate your wallet and play Base 2048. This will not trigger any blockchain transaction or cost any gas fees.
+Sign in to play Base 2048 on the Base network.
 
 URI: ${uri}
 Version: 1
-Chain ID: 8453
+Chain ID: ${chainIdNumeric}
 Nonce: ${nonce}
 Issued At: ${issuedAt}`;
 
