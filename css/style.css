@@ -1,4 +1,4 @@
-/* === ОСНОВА === */
+/* === ÃƒÂÃ…Â¾Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚Â° === */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap');
 
@@ -13,28 +13,32 @@
   --radius-sm: 18px;
   --radius-tile: 20px;
 
-  /* Base Blue Color System */
+  /* Base Blue Color System (Less Aggressive) */
   --base-blue-primary: #0052FF;
   --base-blue-light: #0A84FF;
   --base-blue-accent: #00D4FF;
   
-  /* Grid - Soft Gradient */
+  /* Grid - Soft Gradient (10-15% opacity) */
   --grid-surface: rgba(0, 82, 255, 0.10);
   --grid-surface-border: rgba(255, 255, 255, 0.2);
   
-  /* Grid holes */
+  /* Grid holes - Inner Shadow instead of black */
   --grid-hole: rgba(0, 82, 255, 0.15);
   --grid-hole-border: rgba(0, 82, 255, 0.25);
   
-  /* Glassmorphism - MOBILE: без blur */
-  --glass-bg: rgba(255, 255, 255, 0.20);
-  --glass-border: rgba(255, 255, 255, 0.35);
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --glass-blur: blur(12px);
   
-  /* SafeArea для iOS */
+  /* SafeArea ÃƒÂÃ‚Â´ÃƒÂÃ‚Â»Ãƒâ€˜Ã‚Â iOS */
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 20px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
+  
+  /* ОПТИМИЗАЦИЯ 2.1: VH для мобильных (устанавливается в JS) */
+  --vh: 1vh;
 }
 
 body {
@@ -43,15 +47,20 @@ body {
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   background: linear-gradient(135deg, #0052FF 0%, #0A84FF 25%, #00D4FF 50%, #0A84FF 75%, #0052FF 100%);
   background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
-  min-height: 100vh;
+    min-height: calc(var(--vh, 1vh) * 100);
   overflow-x: hidden;
   /* SafeArea padding */
   padding-top: var(--safe-area-top);
   padding-bottom: var(--safe-area-bottom);
-  /* MOBILE: отключаем overscroll для лучшей производительности */
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ОПТИМИЗАЦИЯ 3.1: Анимация только на desktop */
+@media (min-width: 769px) {
+  body {
+      }
 }
 
 @keyframes gradientShift {
@@ -64,7 +73,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  min-height: calc(var(--vh, 1vh) * 100);
   padding: 20px;
   padding-left: calc(20px + var(--safe-area-left));
   padding-right: calc(20px + var(--safe-area-right));
@@ -88,15 +97,16 @@ body {
   background-clip: text;
   font-weight: 900;
   letter-spacing: 0.08em;
-  /* Упрощённый эффект для мобильных */
-  text-shadow: 0 4px 12px rgba(0, 82, 255, 0.3);
+  /* ÃƒÂÃ…Â¾ÃƒÂÃ‚Â±Ãƒâ€˜Ã…Â ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¼ÃƒÂÃ‚Â½Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â¹ Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¾Ãƒâ€˜Ã¢â‚¬Å¾ÃƒÂÃ‚ÂµÃƒÂÃ‚ÂºÃƒâ€˜Ã¢â‚¬Å¡ */
+  filter: drop-shadow(0 8px 24px rgba(0, 82, 255, 0.4));
 }
 
-/* Best Score - Hidden on start screen */
+/* Best Score - Hidden on start screen, shown in leaderboard */
 .best-score-display {
   display: none;
   background: var(--glass-bg);
-  /* MOBILE: без backdrop-filter */
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   padding: 20px 40px;
   border-radius: var(--radius-lg);
   margin: 30px auto;
@@ -123,6 +133,16 @@ body {
   text-shadow: 0 2px 8px rgba(0, 82, 255, 0.4);
 }
 
+
+
+
+
+
+
+
+
+
+
 .start-actions {
   display: flex;
   gap: 14px;
@@ -141,6 +161,8 @@ body {
 }
 
 .primary-btn {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   padding: 20px 60px;
   font-family: 'Inter', sans-serif;
   font-size: 1.5rem;
@@ -156,9 +178,6 @@ body {
     0 0 0 2px rgba(255, 255, 255, 0.16) inset;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  /* MOBILE: touch optimization */
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
 }
 
 .primary-btn:hover {
@@ -184,7 +203,7 @@ body {
   max-width: 600px;
 }
 
-/* === Score Row === */
+/* === Score Row - ÃƒÂÃ‚Â ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã‹â€ ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â½Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â¹ ÃƒÂÃ‚Â¸ Glassmorphism === */
 .score-row {
   width: 100%;
   display: flex;
@@ -195,7 +214,8 @@ body {
 
 .score-box {
   background: var(--glass-bg);
-  /* MOBILE: без backdrop-filter */
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   padding: 16px 24px;
   border-radius: 24px;
   box-shadow: 0 8px 32px rgba(0, 82, 255, 0.25);
@@ -217,10 +237,12 @@ body {
 
 .score-box.best {
   background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 2px solid var(--glass-border);
 }
 
-/* Иконки для Score и Best */
+/* ÃƒÂÃ‹Å“ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾ÃƒÂÃ‚Â½ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸ ÃƒÂÃ‚Â´ÃƒÂÃ‚Â»Ãƒâ€˜Ã‚Â Score ÃƒÂÃ‚Â¸ Best - SVG ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â´ÃƒÂÃ‚Â·ÃƒÂÃ‚Â¸ */
 .score-box .label::before {
   content: '';
   display: inline-block;
@@ -234,7 +256,15 @@ body {
 }
 
 .score-box.best .label::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,215,0,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9H4.5a2.5 2.5 0 0 1 0-5H6'%3E%3C/path%3E%3Cpath d='M18 9h1.5a2.5 2.5 0 0 0 0-5H18'%3E%3C/path%3E%3Cpath d='M4 22h16'%3E%3C/path%3E%3Cpath d='M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22'%3E%3C/path%3E%3Cpath d='M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22'%3E%3C/path%3E%3Cpath d='M18 2H6v7a6 6 0 0 0 12 0V2Z'%3E%3C/path%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .score-box .label {
@@ -258,7 +288,7 @@ body {
   text-shadow: 0 2px 8px rgba(0, 82, 255, 0.5);
 }
 
-/* Индикатор когда Score превысил Best */
+/* ÃƒÂÃ‹Å“ÃƒÂÃ‚Â½ÃƒÂÃ‚Â´ÃƒÂÃ‚Â¸ÃƒÂÃ‚ÂºÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬ ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾ÃƒÂÃ‚Â³ÃƒÂÃ‚Â´ÃƒÂÃ‚Â° Score ÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚ÂµÃƒÂÃ‚Â²Ãƒâ€˜Ã¢â‚¬Â¹Ãƒâ€˜Ã‹â€ ÃƒÂÃ‚Â°ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ Best */
 .score-box.beating-best .value {
   color: #FF6B6B;
   text-shadow: 0 2px 8px rgba(255, 107, 107, 0.5);
@@ -271,7 +301,8 @@ body {
   100% { transform: scale(1); }
 }
 
-/* === Game Layout с кнопками справа === */
+
+/* === Game Layout Ãƒâ€˜Ã‚Â ÃƒÂÃ‚ÂºÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¿ÃƒÂÃ‚ÂºÃƒÂÃ‚Â°ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¸ Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â° === */
 .game-with-controls {
   display: flex;
   align-items: center;
@@ -286,7 +317,7 @@ body {
   max-width: 500px;
 }
 
-/* === Кнопки Управления === */
+/* === ÃƒÂÃ…Â¡ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¿ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸ Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â»ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚Â - ÃƒÂÃ¢â‚¬â„¢ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â€šÂ¬Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¸ÃƒÂÃ‚ÂºÃƒÂÃ‚Â°ÃƒÂÃ‚Â»Ãƒâ€˜Ã…â€™ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚Â ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â°ÃƒÂÃ‚Â½ÃƒÂÃ‚ÂµÃƒÂÃ‚Â»Ãƒâ€˜Ã…â€™ Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â° === */
 .controls-row {
   display: flex;
   flex-direction: column;
@@ -299,6 +330,8 @@ body {
 }
 
 .control-btn {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   width: 56px;
   height: 56px;
   min-width: 56px;
@@ -315,13 +348,12 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
-  /* MOBILE: упрощённый фон */
+  /* Glassmorphism */
   background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   color: #FFFFFF;
   box-shadow: 0 4px 16px rgba(0, 82, 255, 0.3);
-  /* MOBILE: touch optimization */
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
 }
 
 .control-btn .icon {
@@ -354,17 +386,19 @@ body {
 /* === Grid Container === */
 .grid-container {
   position: relative;
+  /* ОПТИМИЗАЦИЯ 2.2: Адаптивная ширина для стабильности */
+  width: 100%;
+  max-width: min(90vw, 500px);
   background: var(--grid-surface);
-  /* MOBILE: без backdrop-filter */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: var(--radius-lg);
   padding: 16px;
   box-shadow: 0 16px 48px rgba(0, 82, 255, 0.3);
   border: 2px solid var(--grid-surface-border);
+  /* ÃƒÂÃ‚Â¢ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â½ÃƒÂÃ‚ÂºÃƒÂÃ‚Â°Ãƒâ€˜Ã‚Â ÃƒÂÃ‚Â´ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â»Ãƒâ€˜Ã…â€™ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚Â ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â±ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â´ÃƒÂÃ‚ÂºÃƒÂÃ‚Â° */
   outline: 1px solid rgba(255, 255, 255, 0.15);
   outline-offset: -1px;
-  /* MOBILE: фиксированная высота для стабильности */
-  width: 100%;
-  max-width: 500px;
 }
 
 .grid-background {
@@ -372,7 +406,7 @@ body {
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
   position: absolute;
-  inset: 16px;
+  inset: 14px;
   z-index: 0;
 }
 
@@ -384,7 +418,7 @@ body {
   z-index: 1;
 }
 
-/* Пустые ячейки */
+/* ÃƒÂÃ…Â¸Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Âµ Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¹ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸ - Inner Shadow ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â½Ãƒâ€˜Ã¢â‚¬Â¹Ãƒâ€˜Ã¢â‚¬Â¦ ÃƒÂÃ‚Â´Ãƒâ€˜Ã¢â‚¬Â¹Ãƒâ€˜Ã¢â€šÂ¬ */
 .cell-background {
   background: var(--grid-hole);
   border: 1px solid var(--grid-hole-border);
@@ -393,7 +427,7 @@ body {
   box-shadow: inset 0 2px 8px rgba(0, 82, 255, 0.2);
 }
 
-/* === Плитки === */
+/* === ÃƒÂÃ…Â¸ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸ Ãƒâ€˜Ã‚Â Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â²ÃƒÂÃ‚ÂµÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â½Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â¼ Ãƒâ€˜Ã‚ÂÃƒÂÃ‚ÂºÃƒâ€˜Ã¢â€šÂ¬Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â³ÃƒÂÃ‚Â»ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¼ === */
 .cell {
   width: 100%;
   aspect-ratio: 1;
@@ -410,9 +444,10 @@ body {
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-  /* MOBILE: hardware acceleration */
+  /* ОПТИМИЗАЦИЯ: Hardware acceleration */
   will-change: transform;
   transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .cell::before {
@@ -429,7 +464,7 @@ body {
   opacity: 1;
 }
 
-/* === Цветовая схема плиток === */
+/* === ÃƒÂÃ‚Â¦ÃƒÂÃ‚Â²ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚Â Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Â¦ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¼ÃƒÂÃ‚Â° ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Âº (Base Blue ÃƒÂÃ‚Â³Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°ÃƒÂÃ‚Â´ÃƒÂÃ‚Â¸ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã¢â‚¬Â¹) === */
 .cell[data-value="0"] { 
   background: transparent; 
   box-shadow: none;
@@ -529,7 +564,8 @@ body {
   padding: 14px 24px;
   margin-top: 16px;
   background: var(--glass-bg);
-  /* MOBILE: без backdrop-filter */
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--radius-md);
   border: 2px solid var(--glass-border);
   position: relative;
@@ -581,7 +617,7 @@ body {
   text-shadow: 0 2px 8px rgba(0, 82, 255, 0.4);
 }
 
-/* === Анимации === */
+/* === ÃƒÂÃ‚ÂÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¸ === */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -614,6 +650,7 @@ body {
   50% {
     transform: scale(1.15);
     box-shadow: 0 8px 32px rgba(0, 212, 255, 0.6);
+    /* ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â²ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Â°ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¹Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã‚Â Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â»ÃƒÂÃ‚ÂµÃƒÂÃ‚Â´ */
     filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.8));
   }
   100% {
@@ -672,7 +709,8 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(0, 82, 255, 0.4);
-  /* MOBILE: без backdrop-filter */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -686,7 +724,8 @@ body {
 
 .modal {
   background: var(--glass-bg);
-  /* MOBILE: без backdrop-filter */
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   padding: 40px;
   border-radius: var(--radius-lg);
   text-align: center;
@@ -782,12 +821,15 @@ body {
 }
 
 .modal button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   margin: 12px 6px 0;
   padding: 16px 32px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-md);
   background: rgba(255, 127, 112, 0.8);
-  /* MOBILE: без backdrop-filter */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: white;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
@@ -797,9 +839,6 @@ body {
   box-shadow: 0 6px 20px rgba(255, 127, 112, 0.45);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  /* MOBILE: touch optimization */
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
 }
 
 .modal button:hover {
@@ -815,6 +854,8 @@ body {
 
 .modal button.secondary-btn {
   background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: rgba(255, 255, 255, 0.95);
   box-shadow: 0 4px 12px rgba(0, 82, 255, 0.2);
 }
@@ -830,7 +871,7 @@ body {
 
 /* === Responsive === */
 @media (max-width: 768px) {
-  /* Кнопки возвращаются вниз на планшетах */
+  /* ÃƒÂÃ…Â¡ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¿ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸ ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â·ÃƒÂÃ‚Â²Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â°ÃƒÂÃ‚Â°Ãƒâ€˜Ã…Â½Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã‚Â ÃƒÂÃ‚Â²ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â· ÃƒÂÃ‚Â½ÃƒÂÃ‚Â° ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â½Ãƒâ€˜Ã‹â€ ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â¦ */
   .game-with-controls {
     flex-direction: column;
     gap: 16px;
@@ -917,47 +958,6 @@ body {
     min-height: 44px;
   }
 }
-
-/* === DESKTOP ONLY: Glassmorphism с backdrop-filter === */
-@media (min-width: 1024px) {
-  .best-score-display,
-  .score-box,
-  .control-btn,
-  .grid-container,
-  .game-stats,
-  .overlay,
-  .modal,
-  .modal button {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-  
-  .grid-container {
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-  
-  .overlay {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-  
-  .modal {
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-  }
-  
-  .modal button {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-  
-  /* Desktop: возвращаем фильтр на заголовок */
-  .start-screen h1 {
-    filter: drop-shadow(0 8px 24px rgba(0, 82, 255, 0.4));
-  }
-}
-
 /* Sound icon animation */
 .sound-icon .sound-wave {
   transition: opacity 0.3s ease;
@@ -1002,6 +1002,8 @@ body {
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, #FF6B6B 0%, #FF7F70 40%, #FF5252 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: white;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
@@ -1011,9 +1013,6 @@ body {
   box-shadow: 0 6px 20px rgba(255, 107, 107, 0.45);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  /* MOBILE: touch optimization */
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
 }
 
 .coral-btn:hover {
@@ -1036,6 +1035,8 @@ body {
 /* Secondary button styling updates for modal */
 .modal button.secondary-btn {
   background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: rgba(255, 255, 255, 0.95);
   box-shadow: 0 4px 12px rgba(0, 82, 255, 0.2);
 }
@@ -1065,5 +1066,121 @@ body {
   .game-over-buttons button {
     width: 100%;
     min-width: auto;
+  }
+}
+
+
+/* === ОПТИМИЗАЦИЯ 3.1: Desktop-only эффекты === */
+@media (min-width: 1024px) {
+  /* Glassmorphism с backdrop-filter только на desktop */
+  .score-box,
+  .control-btn,
+  .grid-container,
+  .best-score-display,
+  .game-stats,
+  .overlay,
+  .modal,
+  .modal button {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  
+  .grid-container {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  
+  .overlay {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  
+  .modal {
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  
+  /* Более сильные тени на desktop */
+  .score-box {
+    box-shadow: 0 8px 32px rgba(0, 82, 255, 0.25);
+  }
+  
+  .grid-container {
+    box-shadow: 0 16px 48px rgba(0, 82, 255, 0.3);
+  }
+  
+  .primary-btn {
+    box-shadow:
+      0 10px 34px rgba(255, 107, 107, 0.55),
+      0 0 0 2px rgba(255, 255, 255, 0.16) inset;
+  }
+  
+  .primary-btn:hover {
+    box-shadow:
+      0 14px 46px rgba(255, 107, 107, 0.7),
+      0 0 18px rgba(255, 255, 255, 0.22);
+  }
+}
+
+/* ОПТИМИЗАЦИЯ 3.1: Упрощенные эффекты на мобильных */
+@media (max-width: 1023px) {
+  /* Убираем backdrop-filter */
+  .score-box,
+  .control-btn,
+  .grid-container,
+  .best-score-display,
+  .game-stats,
+  .overlay,
+  .modal,
+  .modal button {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  
+  /* Упрощенные тени */
+  .score-box {
+    box-shadow: 0 4px 16px rgba(0, 82, 255, 0.2);
+  }
+  
+  .grid-container {
+    box-shadow: 0 8px 24px rgba(0, 82, 255, 0.2);
+  }
+  
+  .control-btn {
+    box-shadow: 0 2px 8px rgba(0, 82, 255, 0.2);
+  }
+  
+  .primary-btn {
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+  }
+  
+  .primary-btn:hover {
+    box-shadow: 0 8px 28px rgba(255, 107, 107, 0.5);
+  }
+  
+  /* Упрощенные анимации */
+  .cell.new,
+  .cell.merged {
+    animation-duration: 0.15s;
+  }
+}
+
+
+/* === ОПТИМИЗАЦИЯ 3.2: ПОДДЕРЖКА prefers-reduced-motion === */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  body {
+    animation: none !important;
+  }
+  
+  .cell[data-value="2048"] {
+    animation: none !important;
   }
 }

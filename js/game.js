@@ -36,13 +36,35 @@ let moves = 0;
 let startTime = null;
 let timerInterval = null;
 
-// === Audio Context для звуков ===
-const AudioContext = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContext();
+// === ОПТИМИЗАЦИЯ 1.1: Кеш DOM элементов ячеек ===
+let cellElements = [];
 
-// Функция генерации звука
+// === ОПТИМИЗАЦИЯ 1.3: Ленивая инициализация AudioContext ===
+let audioCtx = null;
+let audioInitialized = false;
+
+function initAudioContext() {
+  if (audioInitialized) return;
+  
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AudioContext();
+    audioInitialized = true;
+    console.log('[Audio] AudioContext initialized on first use');
+  } catch (e) {
+    console.log('[Audio] AudioContext not supported');
+  }
+}
+
 function playSound(frequency, duration, type = 'sine', volume = 0.15) {
   if (!soundEnabled) return;
+  
+  // Ленивая инициализация при первом звуке
+  if (!audioInitialized) {
+    initAudioContext();
+  }
+  
+  if (!audioCtx) return;
   
   try {
     const oscillator = audioCtx.createOscillator();
@@ -60,11 +82,10 @@ function playSound(frequency, duration, type = 'sine', volume = 0.15) {
     oscillator.start(audioCtx.currentTime);
     oscillator.stop(audioCtx.currentTime + duration);
   } catch (e) {
-    console.log('Audio not supported');
+    // Silent fail
   }
 }
 
-// Звуковые эффекты
 const sounds = {
   move: () => playSound(200, 0.05, 'sine', 0.1),
   merge: (value) => {
@@ -180,6 +201,7 @@ function init() {
   resetMoves();
   
   createGridBackground();
+  createGridCells();
   
   addNumber();
   addNumber();
@@ -187,7 +209,6 @@ function init() {
   updateScore();
 }
 
-// Создание фоновой сетки
 function createGridBackground() {
   gridBackground.innerHTML = '';
   for (let i = 0; i < size * size; i++) {
@@ -197,19 +218,39 @@ function createGridBackground() {
   }
 }
 
-// === Отрисовка и анимация ===
+// === ОПТИМИЗАЦИЯ 1.1: Создание ячеек ОДИН РАЗ ===
+function createGridCells() {
+  if (cellElements.length > 0) {
+    // Переиспользуем существующие
+    return;
+  }
+  
+  gridElement.innerHTML = '';
+  
+  for (let i = 0; i < size * size; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.index = i;
+    gridElement.appendChild(cell);
+    cellElements.push(cell);
+  }
+  
+  console.log('[Performance] Grid cells created once');
+}
+
+// === ОПТИМИЗАЦИЯ 1.1: Рендеринг БЕЗ пересоздания DOM ===
 let newCellIndex = null;
 let mergedCells = new Set();
 
 function renderGrid() {
-  gridElement.innerHTML = '';
-  
+  // Обновляем только содержимое, НЕ пересоздаём DOM
   grid.forEach((value, index) => {
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-    cell.dataset.value = value;
-    cell.dataset.index = index;
+    const cell = cellElements[index];
+    
     cell.textContent = value || '';
+    cell.dataset.value = value;
+    
+    cell.classList.remove('new', 'merged');
     
     if (index === newCellIndex && value !== 0) {
       cell.classList.add('new');
@@ -218,15 +259,12 @@ function renderGrid() {
     if (mergedCells.has(index)) {
       cell.classList.add('merged');
     }
-    
-    gridElement.appendChild(cell);
   });
   
   newCellIndex = null;
   mergedCells.clear();
 }
 
-// === Обновление счёта ===
 function updateScore() {
   scoreElement.textContent = score;
   
@@ -240,15 +278,19 @@ function updateScore() {
   }
 }
 
-// Показываем popup с добавленными очками
+// === ОПТИМИЗАЦИЯ 1.2: Popup через RAF без reflow ===
 function showScorePopup(points) {
   scorePopup.textContent = '+' + points;
+  
   scorePopup.classList.remove('show');
-  void scorePopup.offsetWidth; // Trigger reflow
-  scorePopup.classList.add('show');
+  
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      scorePopup.classList.add('show');
+    });
+  });
 }
 
-// === Добавление нового числа ===
 function addNumber() {
   const empty = grid
     .map((v, i) => v === 0 ? i : null)
@@ -263,7 +305,6 @@ function addNumber() {
   sounds.newTile();
 }
 
-// === Слияние линии ===
 function merge(line) {
   let merged = false;
   let totalPoints = 0;
@@ -292,7 +333,6 @@ function merge(line) {
   return { line: result, merged, points: totalPoints, mergePositions };
 }
 
-// === Движение ===
 function move(direction) {
   if (!gameOverEl.classList.contains("hidden") || !restartConfirmEl.classList.contains("hidden")) {
     return;
@@ -374,7 +414,6 @@ function move(direction) {
         newRecordMsg.classList.add('hidden');
       }
       
-      // Setup game over buttons (show sign button if needed)
       setupGameOverButtons(score);
       
       setTimeout(() => {
@@ -386,7 +425,6 @@ function move(direction) {
   }
 }
 
-// === Проверка Game Over ===
 function checkGameOver() {
   if (grid.includes(0)) return false;
 
@@ -403,7 +441,6 @@ function checkGameOver() {
   return true;
 }
 
-// === Управление клавиатурой ===
 window.addEventListener("keydown", e => {
   if (!gameOverEl.classList.contains("hidden") || !restartConfirmEl.classList.contains("hidden")) {
     return;
@@ -427,24 +464,20 @@ window.addEventListener("keydown", e => {
   }
 });
 
-// === УЛУЧШЕННЫЕ Свайпы для мобильных ===
+// === ОПТИМИЗАЦИЯ 1.4: Улучшенные свайпы ===
 let touchStartX = 0;
 let touchStartY = 0;
 let touchStartTime = 0;
-const SWIPE_THRESHOLD = 40; // Увеличил порог для надёжности
-const SWIPE_TIME_THRESHOLD = 300;
+const SWIPE_THRESHOLD = 40;
+const SWIPE_TIME_THRESHOLD = 600;
 
-// ВАЖНО: Используем passive для touchstart/touchend для производительности
-// НО touchmove НЕ passive чтобы блокировать scroll
 gridContainer.addEventListener("touchstart", e => {
   touchStartX = e.touches[0].clientX;
   touchStartY = e.touches[0].clientY;
   touchStartTime = Date.now();
 }, { passive: true });
 
-// CRITICAL: touchmove с preventDefault для блокировки скролла
 gridContainer.addEventListener("touchmove", e => {
-  // Блокируем скролл ТОЛЬКО на grid, не на всём экране
   e.preventDefault();
 }, { passive: false });
 
@@ -461,24 +494,19 @@ gridContainer.addEventListener("touchend", e => {
   const dy = touchEndY - touchStartY;
   const dt = touchEndTime - touchStartTime;
 
-  // Игнорируем слишком медленные свайпы
   if (dt > SWIPE_TIME_THRESHOLD) return;
   
-  // Определяем направление
   if (Math.abs(dx) > Math.abs(dy)) {
-    // Горизонтальный свайп
     if (Math.abs(dx) > SWIPE_THRESHOLD) {
       dx > 0 ? move("right") : move("left");
     }
   } else {
-    // Вертикальный свайп
     if (Math.abs(dy) > SWIPE_THRESHOLD) {
       dy > 0 ? move("down") : move("up");
     }
   }
 }, { passive: true });
 
-// === Кнопки управления ===
 undoBtn.addEventListener("click", () => {
   if (!previousGrid) return;
   if (!gameOverEl.classList.contains("hidden") || !restartConfirmEl.classList.contains("hidden")) return;
@@ -509,19 +537,16 @@ restartFromGameOverBtn.addEventListener("click", () => {
   init();
 });
 
-// Sign and send score button
 signAndSendScoreBtn.addEventListener("click", async () => {
   const scoreToSend = parseInt(signAndSendScoreBtn.dataset.score);
   if (!scoreToSend) return;
   
-  // Disable button during signing
   signAndSendScoreBtn.disabled = true;
   signAndSendScoreBtn.textContent = 'Signing...';
   
   try {
     await submitScoreToBackend(scoreToSend);
     
-    // Success: hide sign button, make Play Again primary
     signAndSendScoreBtn.classList.add('hidden');
     restartFromGameOverBtn.classList.add('make-primary');
     
@@ -530,11 +555,9 @@ signAndSendScoreBtn.addEventListener("click", async () => {
   } catch (error) {
     console.error('[Game] Failed to submit score:', error);
     
-    // Re-enable button on error
     signAndSendScoreBtn.disabled = false;
     signAndSendScoreBtn.textContent = 'Submit';
     
-    // Show error to user
     alert('Failed to submit score. Please try again.');
   }
 });
@@ -543,7 +566,6 @@ backBtn.addEventListener("click", () => {
   goToMainMenu();
 });
 
-// Переключение звука
 soundBtn.addEventListener("click", () => {
   soundEnabled = !soundEnabled;
   const soundIcon = soundBtn.querySelector('.sound-icon');
@@ -562,7 +584,16 @@ soundBtn.addEventListener("click", () => {
   }
 });
 
-// === Инициализация при загрузке ===
+// === ОПТИМИЗАЦИЯ 2.1: Viewport Height Fix ===
+function setViewportHeight() {
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+setViewportHeight();
+window.addEventListener('resize', setViewportHeight);
+window.addEventListener('orientationchange', setViewportHeight);
+
 window.addEventListener('DOMContentLoaded', async () => {
   loadBestScore();
   
@@ -575,7 +606,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     soundBtn.classList.add('sound-off');
   }
   
-  // Initialize wallet UI
   try {
     const { initWalletUI } = await import('./wallet-ui.js');
     await initWalletUI();
@@ -584,58 +614,44 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// Expose startGame for the inline onclick on the Play button
 window.startGame = startGame;
 
-// === Setup Game Over Buttons ===
 async function setupGameOverButtons(finalScore) {
   try {
-    // Import wallet manager
     const { walletManager } = await import('./wallet.js');
     
-    // Reset sign button state (in case it was left in "Signing..." state)
     signAndSendScoreBtn.disabled = false;
     signAndSendScoreBtn.textContent = 'Submit';
     
-    // Check if wallet is connected and has name
     const isConnected = walletManager.isConnected();
     const hasName = walletManager.hasPlayerName();
     
     if (isConnected && hasName) {
-      // Show sign button
       signAndSendScoreBtn.classList.remove('hidden');
       restartFromGameOverBtn.classList.remove('make-primary');
-      
-      // Store score for later submission
       signAndSendScoreBtn.dataset.score = finalScore;
     } else {
-      // Hide sign button, make Play Again primary
       signAndSendScoreBtn.classList.add('hidden');
       restartFromGameOverBtn.classList.add('make-primary');
     }
     
   } catch (error) {
     console.error('[Game] Error setting up game over buttons:', error);
-    // Default: hide sign button
     signAndSendScoreBtn.classList.add('hidden');
     restartFromGameOverBtn.classList.add('make-primary');
   }
 }
 
-// === Backend Score Submission ===
 async function submitScoreToBackend(finalScore) {
   try {
-    // Import modules
     const { walletManager } = await import('./wallet.js');
     const { backendAPI } = await import('./backend-api.js');
     
-    // Check if wallet is connected
     if (!walletManager.isConnected()) {
       console.log('[Game] Wallet not connected, skipping backend submission');
       return;
     }
     
-    // Check if player has registered name
     if (!walletManager.hasPlayerName()) {
       console.log('[Game] No player name registered, skipping backend submission');
       return;
@@ -651,48 +667,30 @@ async function submitScoreToBackend(finalScore) {
       score: finalScore
     });
     
-    // Request signature for score submission
     const signatureResult = await backendAPI.requestScoreSignature(
       provider,
       address,
       finalScore
     );
     
-    console.log('[Game] ==========================================');
-    console.log('[Game] Signature result received:');
-    console.log('[Game]   Type:', typeof signatureResult);
-    console.log('[Game]   Keys:', Object.keys(signatureResult || {}));
-    console.log('[Game]   signature:', signatureResult?.signature);
-    console.log('[Game]   timestamp:', signatureResult?.timestamp);
-    console.log('[Game]   message:', signatureResult?.message);
-    console.log('[Game] ==========================================');
-    
     const { signature, timestamp, message } = signatureResult;
     
-    console.log('[Game] Destructured values:');
-    console.log('[Game]   signature:', signature);
-    console.log('[Game]   timestamp:', timestamp);
-    console.log('[Game]   message:', message);
-    
-    // Submit to backend
     const result = await backendAPI.submitScore(
       address,
       playerName,
       finalScore,
       signature,
       timestamp,
-      message  // Pass the exact message that was signed
+      message
     );
     
     console.log('[Game] ✓ Score submitted to backend:', result);
     
-    // Show notification if new record
     if (result.data && result.data.isNewRecord) {
       console.log('[Game] 🎉 New personal best on leaderboard!');
     }
     
   } catch (error) {
-    // Don't interrupt game flow if backend submission fails
     console.error('[Game] Backend submission failed:', error.message);
     console.log('[Game] Game continues normally despite backend error');
   }
