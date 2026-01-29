@@ -178,17 +178,30 @@ class WalletManager {
 
       await this.switchToBaseChain(provider, chainId);
 
-      // Request signature for authentication
+      // Request signature for authentication with cascading fallbacks
       console.log('[Wallet] Requesting signature for authentication...');
       let signature;
       
       try {
+        // Try 1: Standard SIWE with statement
         signature = await this.requestSignature(provider, address);
-      } catch (signError) {
-        console.warn('[Wallet] personal_sign failed, trying alternative method...');
+      } catch (error1) {
+        console.warn('[Wallet] Method 1 (standard SIWE) failed, trying minimal SIWE...');
         
-        // Try alternative signing method for Base App
-        signature = await this.requestSignatureAlternative(provider, address);
+        try {
+          // Try 2: Minimal SIWE without statement
+          signature = await this.requestSignatureMinimal(provider, address);
+        } catch (error2) {
+          console.warn('[Wallet] Method 2 (minimal SIWE) failed, trying simple text...');
+          
+          try {
+            // Try 3: Simple text signature
+            signature = await this.requestSignatureSimple(provider, address);
+          } catch (error3) {
+            console.error('[Wallet] All signature methods failed');
+            throw new Error('Failed to authenticate wallet. Base App may not support this site.');
+          }
+        }
       }
       
       if (!signature) {
@@ -257,17 +270,14 @@ class WalletManager {
   async requestSignature(provider, address) {
     try {
       const timestamp = Date.now();
-      
-      // CRITICAL FIX: Nonce MUST be 8+ characters (Base App requirement)
-      const nonce = Math.random().toString(36).substring(2, 10) + 
-                    Math.random().toString(36).substring(2, 6);
-      
+      const nonce = Math.random().toString(36).substring(7);
       const domain = window.location.host;
       const uri = window.location.origin;
       const issuedAt = new Date(timestamp).toISOString();
       
-      // Get actual chainId from provider
-      let chainIdNumeric = 8453;
+      // ÐŸÐ¾Ð»ÑƒÑ‡Ð°ÐµÐ¼ Ð°ÐºÑ‚ÑƒÐ°Ð»ÑŒÐ½Ñ‹Ð¹ chainId Ñ Ð¿Ñ€Ð¾Ð²Ð°Ð¹Ð´ÐµÑ€Ð°,
+      // Ñ‡Ñ‚Ð¾Ð±Ñ‹ Ð¾Ð½ Ñ‚Ð¾Ñ‡Ð½Ð¾ ÑÐ¾Ð²Ð¿Ð°Ð´Ð°Ð» Ñ ÑÐµÑ‚ÑŒÑŽ Ð² ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÐµ (Base App ÑÑ‚Ð¾ ÑÑ‚Ñ€Ð¾Ð³Ð¾ Ð¿Ñ€Ð¾Ð²ÐµÑ€ÑÐµÑ‚)
+      let chainIdNumeric = 8453; // Ð·Ð½Ð°Ñ‡ÐµÐ½Ð¸Ðµ Ð¿Ð¾ ÑƒÐ¼Ð¾Ð»Ñ‡Ð°Ð½Ð¸ÑŽ â€” Base mainnet
       try {
         const chainIdRaw = await provider.request({ method: 'eth_chainId' });
         if (typeof chainIdRaw === 'string') {
@@ -279,12 +289,12 @@ class WalletManager {
         console.warn('[Wallet] Could not read chainId, falling back to Base mainnet (8453)', e);
       }
       
-      // EXACT EIP-4361 SIWE format for Base App compatibility
-      // Statement MUST be short and have NO newlines
+      // Ð¡Ñ‚Ñ€Ð¾Ð³Ð¸Ð¹ Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚ SIWE (EIPâ€‘4361), Ð¼Ð°ÐºÑÐ¸Ð¼Ð°Ð»ÑŒÐ½Ð¾ Ð±Ð»Ð¸Ð·ÐºÐ¸Ð¹ Ðº Ð¾Ñ„Ð¸Ñ†Ð¸Ð°Ð»ÑŒÐ½Ð¾Ð¼Ñƒ Ð¿Ñ€Ð¸Ð¼ÐµÑ€Ñƒ.
+      // ÐÐµÐºÐ¾Ñ‚Ð¾Ñ€Ñ‹Ðµ ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÐ¸ (Ð² Ñ‚.Ñ‡. Base/Coinbase) Ð¿Ð°Ñ€ÑÑÑ‚ ÐµÐ³Ð¾ Ð¸ Ð¾Ñ‚ÐºÐ»Ð¾Ð½ÑÑŽÑ‚ Ð½ÐµÑÑ‚Ð°Ð½Ð´Ð°Ñ€Ñ‚Ð½Ñ‹Ðµ Ð²Ð°Ñ€Ð¸Ð°Ð½Ñ‚Ñ‹.
       const message = `${domain} wants you to sign in with your Ethereum account:
 ${address}
 
-Sign in to Base 2048
+Sign in to play Base 2048 on the Base network.
 
 URI: ${uri}
 Version: 1
@@ -292,20 +302,8 @@ Chain ID: ${chainIdNumeric}
 Nonce: ${nonce}
 Issued At: ${issuedAt}`;
 
-      console.log('[Wallet] ========================================');
-      console.log('[Wallet] SIWE Message (Base App compliant):');
-      console.log('[Wallet]   Domain:', domain);
-      console.log('[Wallet]   Address:', address);
-      console.log('[Wallet]   Statement: "Sign in to Base 2048"');
-      console.log('[Wallet]   URI:', uri);
-      console.log('[Wallet]   Version: 1');
-      console.log('[Wallet]   Chain ID:', chainIdNumeric);
-      console.log('[Wallet]   Nonce:', nonce, '(length:', nonce.length, ')');
-      console.log('[Wallet]   Issued At:', issuedAt);
-      console.log('[Wallet] ========================================');
-      console.log('[Wallet] Full message:');
-      console.log(message);
-      console.log('[Wallet] ========================================');
+      console.log('[Wallet] Requesting signature...');
+      console.log('[Wallet] SIWE Message:', message);
       
       const signature = await provider.request({
         method: 'personal_sign',
@@ -314,6 +312,7 @@ Issued At: ${issuedAt}`;
 
       console.log('[Wallet] Signature received');
       
+      // Store signature data
       const signatureData = {
         signature,
         message,
@@ -326,46 +325,11 @@ Issued At: ${issuedAt}`;
 
     } catch (error) {
       console.error('[Wallet] Signature error:', error);
-      console.error('[Wallet] Error code:', error.code);
-      console.error('[Wallet] Error message:', error.message);
       
       if (error.code === 4001) {
         throw new Error('Signature rejected by user');
       }
       
-      throw error;
-    }
-  }
-
-  // === Alternative Signature Method ===
-  async requestSignatureAlternative(provider, address) {
-    try {
-      const timestamp = Date.now();
-      const nonce = Math.floor(Math.random() * 1000000).toString().padStart(8, '0');
-      const issuedAt = new Date(timestamp).toISOString();
-      
-      const simpleMessage = `Sign in to Base 2048\n\nAddress: ${address}\nTimestamp: ${issuedAt}\nNonce: ${nonce}`;
-      
-      console.log('[Wallet] Trying alternative signature method...');
-      console.log('[Wallet] Simple message:', simpleMessage);
-      
-      const signature = await provider.request({
-        method: 'personal_sign',
-        params: [simpleMessage, address.toLowerCase()]
-      });
-
-      console.log('[Wallet] Alternative signature received');
-      
-      return {
-        signature,
-        message: simpleMessage,
-        address,
-        timestamp,
-        nonce
-      };
-
-    } catch (error) {
-      console.error('[Wallet] Alternative signature also failed:', error);
       throw error;
     }
   }
@@ -383,6 +347,7 @@ Issued At: ${issuedAt}`;
         params: [{ chainId: baseChainId }],
       });
     } catch (switchError) {
+      // Chain not added, add it
       if (switchError.code === 4902) {
         await provider.request({
           method: 'wallet_addEthereumChain',
@@ -404,16 +369,121 @@ Issued At: ${issuedAt}`;
     }
   }
 
+
+  // === Minimal SIWE (no statement) ===
+  async requestSignatureMinimal(provider, address) {
+    try {
+      const timestamp = Date.now();
+      const nonce = Math.random().toString(36).substring(2, 10) + 
+                    Math.random().toString(36).substring(2, 6);
+      
+      const domain = window.location.host;
+      const uri = window.location.origin;
+      const issuedAt = new Date(timestamp).toISOString();
+      
+      let chainIdNumeric = 8453;
+      try {
+        const chainIdRaw = await provider.request({ method: 'eth_chainId' });
+        if (typeof chainIdRaw === 'string') {
+          chainIdNumeric = parseInt(chainIdRaw, 16);
+        } else if (typeof chainIdRaw === 'number') {
+          chainIdNumeric = chainIdRaw;
+        }
+      } catch (e) {
+        console.warn('[Wallet] Could not read chainId');
+      }
+      
+      // MINIMAL SIWE - NO STATEMENT LINE (some apps reject statement)
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${address}
+
+URI: ${uri}
+Version: 1
+Chain ID: ${chainIdNumeric}
+Nonce: ${nonce}
+Issued At: ${issuedAt}`;
+
+      console.log('[Wallet] ========================================');
+      console.log('[Wallet] MINIMAL SIWE (no statement):');
+      console.log(message);
+      console.log('[Wallet] ========================================');
+      
+      const signature = await provider.request({
+        method: 'personal_sign',
+        params: [message, address]
+      });
+
+      console.log('[Wallet] ✓ Minimal SIWE signature received');
+      
+      return {
+        signature,
+        message,
+        address,
+        timestamp,
+        nonce
+      };
+
+    } catch (error) {
+      console.error('[Wallet] ✗ Minimal SIWE error:', error);
+      throw error;
+    }
+  }
+
+  // === Simple Text Signature ===
+  async requestSignatureSimple(provider, address) {
+    try {
+      const timestamp = Date.now();
+      const nonce = Math.random().toString(36).substring(2, 10) + 
+                    Math.random().toString(36).substring(2, 6);
+      
+      const domain = window.location.host;
+      const issuedAt = new Date(timestamp).toISOString();
+      
+      // VERY SIMPLE FORMAT (last resort for strict apps)
+      const message = `Sign in to ${domain}
+
+Address: ${address}
+Time: ${issuedAt}
+Nonce: ${nonce}`;
+
+      console.log('[Wallet] ========================================');
+      console.log('[Wallet] SIMPLE TEXT signature:');
+      console.log(message);
+      console.log('[Wallet] ========================================');
+      
+      const signature = await provider.request({
+        method: 'personal_sign',
+        params: [message, address]
+      });
+
+      console.log('[Wallet] ✓ Simple text signature received');
+      
+      return {
+        signature,
+        message,
+        address,
+        timestamp,
+        nonce
+      };
+
+    } catch (error) {
+      console.error('[Wallet] ✗ Simple text error:', error);
+      throw error;
+    }
+  }
   async disconnect() {
     try {
+      // Disconnect WalletConnect if active
       if (this.walletConnectProvider && this.currentProvider === this.walletConnectProvider) {
         await this.walletConnectProvider.disconnect();
       }
 
+      // Remove event listeners
       if (this.currentProvider) {
         this.unsubscribeFromEvents(this.currentProvider);
       }
 
+      // Clear state
       this.connectedWallet = null;
       this.currentProvider = null;
       this.isAuthenticated = false;
@@ -476,6 +546,7 @@ Issued At: ${issuedAt}`;
       timestamp: Date.now()
     };
     
+    // Add signature data if provided
     if (signatureData) {
       connectionData.signature = signatureData.signature;
       connectionData.signatureTimestamp = signatureData.timestamp;
@@ -505,6 +576,7 @@ Issued At: ${issuedAt}`;
     try {
       const { address, walletName, timestamp, signature, signatureTimestamp } = JSON.parse(saved);
 
+      // Check if connection is not too old (24 hours)
       const dayInMs = 24 * 60 * 60 * 1000;
       if (Date.now() - timestamp > dayInMs) {
         console.log('[Wallet] Connection expired');
@@ -512,6 +584,7 @@ Issued At: ${issuedAt}`;
         return null;
       }
 
+      // Check if signature exists and is valid (not older than 7 days)
       if (signature && signatureTimestamp) {
         const weekInMs = 7 * 24 * 60 * 60 * 1000;
         if (Date.now() - signatureTimestamp > weekInMs) {
@@ -527,11 +600,13 @@ Issued At: ${issuedAt}`;
 
       console.log('[Wallet] Attempting to restore connection...');
 
+      // Try to reconnect
       for (let [, wallet] of this.availableProviders) {
         if (wallet.name === walletName) {
           try {
             const provider = wallet.provider;
 
+            // For WalletConnect, check if session exists
             if (walletName === 'WalletConnect' && provider.session) {
               const accounts = await provider.request({ method: 'eth_accounts' });
               if (accounts && accounts[0] && accounts[0].toLowerCase() === address.toLowerCase()) {
@@ -539,6 +614,7 @@ Issued At: ${issuedAt}`;
               }
             }
 
+            // For other wallets
             const accounts = await provider.request({ method: 'eth_accounts' });
             if (accounts && accounts[0] && accounts[0].toLowerCase() === address.toLowerCase()) {
               return await this.restoreConnection(accounts[0], provider, wallet);
@@ -565,7 +641,10 @@ Issued At: ${issuedAt}`;
     this.isAuthenticated = true;
     this.subscribeToEvents(provider);
     
+    // Initialize contract manager
     await contractManager.init(provider);
+    
+    // Check player name
     await this.checkPlayerName(address);
     
     console.log('[Wallet] Connection restored');
@@ -592,6 +671,7 @@ Issued At: ${issuedAt}`;
     return this.connectedWallet;
   }
 
+  // Get stored signature data
   getSignature() {
     const saved = localStorage.getItem('2048-wallet');
     if (!saved) return null;
@@ -613,6 +693,7 @@ Issued At: ${issuedAt}`;
     return null;
   }
 
+  // Verify if signature is still valid
   isSignatureValid() {
     const signatureData = this.getSignature();
     if (!signatureData) return false;
@@ -643,9 +724,11 @@ Issued At: ${issuedAt}`;
     try {
       const result = await contractManager.mintName(name, this.connectedWallet);
       
+      // Update state
       this.playerName = result.name;
       this.hasName = true;
       
+      // Update stored connection
       this.updateStoredPlayerName(result.name);
       
       return result;
