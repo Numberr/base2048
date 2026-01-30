@@ -1,4 +1,5 @@
 // === Wallet Management ===
+// VARIANT 5: Base Account SDK Integration
 import { WALLET_CONFIG } from './config.js';
 import { contractManager, NAME_RULES } from './contract.js';
 
@@ -145,11 +146,78 @@ class WalletManager {
     }
   }
 
+  // === Detect Base App ===
+  detectBaseApp(wallet) {
+    const provider = wallet.provider;
+    
+    const checks = {
+      isCoinbaseWallet: provider?.isCoinbaseWallet === true,
+      isBaseWallet: provider?.isBaseWallet === true,
+      walletName: wallet.name === 'Coinbase Wallet',
+      hasBaseProperty: typeof provider?.isBase !== 'undefined'
+    };
+    
+    console.log('[VARIANT 5] 🔍 Base App detection checks:', checks);
+    
+    const isBase = checks.isCoinbaseWallet || checks.isBaseWallet || checks.walletName;
+    
+    return isBase;
+  }
+
+  // === Create Base Account Provider ===
+  async createBaseAccountProvider() {
+    try {
+      console.log('[VARIANT 5] 📦 Creating Base Account SDK provider...');
+      
+      if (typeof window.BaseAccount === 'undefined') {
+        throw new Error('Base Account SDK not loaded');
+      }
+      
+      console.log('[VARIANT 5] SDK found, creating instance...');
+      
+      const sdk = window.BaseAccount.createBaseAccountSDK({
+        appName: 'Base 2048',
+        appLogoUrl: null,
+        appChainIds: [8453]
+      });
+      
+      console.log('[VARIANT 5] SDK instance created');
+      
+      const provider = sdk.getProvider();
+      
+      console.log('[VARIANT 5] ✅ Base Account provider obtained');
+      console.log('[VARIANT 5] Provider type:', typeof provider);
+      console.log('[VARIANT 5] Provider methods:', Object.keys(provider).slice(0, 10));
+      
+      return provider;
+      
+    } catch (error) {
+      console.error('[VARIANT 5] ❌ Failed to create Base Account provider:', error);
+      throw error;
+    }
+  }
+
   // === Connection ===
   async connect(wallet) {
     try {
-      console.log(`[Wallet] Connecting to ${wallet.name}...`);
-      const provider = wallet.provider;
+      console.log('[VARIANT 5] ========================================');
+      console.log('[VARIANT 5] 🚀 STARTING CONNECTION');
+      console.log('[VARIANT 5] Wallet name:', wallet.name);
+      console.log('[VARIANT 5] ========================================');
+      
+      let provider = wallet.provider;
+      
+      // 🔥 VARIANT 5: Detect Base App and create proper provider
+      const isBaseApp = this.detectBaseApp(wallet);
+      console.log('[VARIANT 5] Is Base App detected:', isBaseApp);
+      
+      if (isBaseApp) {
+        console.log('[VARIANT 5] 📱 Base App detected - using Base Account SDK');
+        provider = await this.createBaseAccountProvider();
+        console.log('[VARIANT 5] ✅ Base Account SDK provider created');
+      } else {
+        console.log('[VARIANT 5] 💼 Regular wallet - using standard provider');
+      }
 
       // WalletConnect needs explicit connect()
       if (wallet.name === 'WalletConnect') {
@@ -161,6 +229,7 @@ class WalletManager {
       }
 
       // Request account access
+      console.log('[VARIANT 5] Requesting accounts...');
       const accounts = await provider.request({ 
         method: 'eth_requestAccounts' 
       });
@@ -170,57 +239,30 @@ class WalletManager {
       }
 
       const address = accounts[0];
-      console.log('[Wallet] Connected:', address);
+      console.log('[VARIANT 5] ✅ Connected:', address);
 
       // Get and verify chain
       const chainId = await provider.request({ method: 'eth_chainId' });
-      console.log('[Wallet] Chain ID:', chainId);
+      console.log('[VARIANT 5] Chain ID:', chainId);
 
       await this.switchToBaseChain(provider, chainId);
 
-      // ========================================
-      // 🔥 VARIANT 2: Base App Official Method
-      // ========================================
-      console.log('[VARIANT 2] 🚀 Starting authentication...');
-      console.log('[VARIANT 2] Detecting wallet type...');
+      // Request signature for authentication
+      console.log('[VARIANT 5] ========================================');
+      console.log('[VARIANT 5] 🔐 REQUESTING AUTHENTICATION SIGNATURE');
+      console.log('[VARIANT 5] ========================================');
       
       let signature = null;
-      const isBaseApp = this.detectBaseApp(provider);
       
-      console.log('[VARIANT 2] Is Base App:', isBaseApp);
-      
-      if (isBaseApp) {
-        // Base App (mini app) - use official wallet_connect method
-        console.log('[VARIANT 2] 📱 Using Base App official method');
-        console.log('[VARIANT 2] Calling wallet_connect with signInWithEthereum capability...');
-        
-        try {
-          signature = await this.requestSignatureBaseApp(provider, address);
-          console.log('[VARIANT 2] ✅ Base App authentication successful!');
-        } catch (error) {
-          console.error('[VARIANT 2] ❌ Base App method failed:', error.message);
-          console.log('[VARIANT 2] Error details:', error);
-          throw error;
-        }
-      } else {
-        // Regular wallet - use standard SIWE
-        console.log('[VARIANT 2] 💼 Regular wallet detected, using standard SIWE');
-        
-        try {
-          signature = await this.requestSignature(provider, address);
-          console.log('[VARIANT 2] ✅ Standard SIWE authentication successful!');
-        } catch (error) {
-          console.error('[VARIANT 2] ❌ Standard SIWE failed:', error.message);
-          throw error;
-        }
+      try {
+        signature = await this.requestSignature(provider, address);
+        console.log('[VARIANT 5] ✅ Signature obtained successfully!');
+      } catch (error) {
+        console.error('[VARIANT 5] ❌ Signature failed:', error.message);
+        console.error('[VARIANT 5] Error code:', error.code);
+        console.error('[VARIANT 5] Full error:', error);
+        throw error;
       }
-      
-      console.log('[VARIANT 2] ========================================');
-      console.log('[VARIANT 2] Authentication result:');
-      console.log('[VARIANT 2]   Has signature:', !!signature?.signature);
-      console.log('[VARIANT 2]   Has message:', !!signature?.message);
-      console.log('[VARIANT 2]   Address:', signature?.address);
-      console.log('[VARIANT 2] ========================================');
 
       // Initialize contract manager
       await contractManager.init(provider);
@@ -236,8 +278,12 @@ class WalletManager {
       this.saveConnection(address, wallet.name, signature);
       this.subscribeToEvents(provider);
 
-      console.log('[Wallet] Successfully connected and authenticated');
-      console.log('[Wallet] Player name:', this.playerName || '(not registered)');
+      console.log('[VARIANT 5] ========================================');
+      console.log('[VARIANT 5] ✅ CONNECTION COMPLETE');
+      console.log('[VARIANT 5] Address:', address);
+      console.log('[VARIANT 5] Player name:', this.playerName || '(not registered)');
+      console.log('[VARIANT 5] Has signature:', !!signature?.signature);
+      console.log('[VARIANT 5] ========================================');
       
       return { 
         address, 
@@ -248,7 +294,10 @@ class WalletManager {
       };
 
     } catch (error) {
-      console.error('[Wallet] Connection error:', error);
+      console.error('[VARIANT 5] ========================================');
+      console.error('[VARIANT 5] ❌ CONNECTION FAILED');
+      console.error('[VARIANT 5] Error:', error);
+      console.error('[VARIANT 5] ========================================');
       
       let errorMessage = 'Failed to connect wallet';
       if (error.code === 4001) {
@@ -280,119 +329,26 @@ class WalletManager {
     }
   }
 
-  // === Detect Base App ===
-  detectBaseApp(provider) {
-    // Base App has specific properties
-    // Check for Base-specific provider flags
-    const checks = {
-      isBaseWallet: provider.isBaseWallet === true,
-      isCoinbaseWallet: provider.isCoinbaseWallet === true,
-      hasWalletConnect: typeof provider.request === 'function',
-      chainId: provider.chainId === '0x2105' || provider.chainId === 8453
-    };
-    
-    console.log('[VARIANT 2] 🔍 Base App detection checks:', checks);
-    
-    // Base App is typically Coinbase Wallet on Base chain
-    const isBase = checks.isCoinbaseWallet || checks.isBaseWallet;
-    
-    return isBase;
-  }
-
-  // === VARIANT 2: Base App Official Signature Method ===
-  async requestSignatureBaseApp(provider, address) {
+  // === VARIANT 5: Standard SIWE (works with Base Account SDK) ===
+  async requestSignature(provider, address) {
     try {
-      console.log('[VARIANT 2] ========================================');
-      console.log('[VARIANT 2] 📱 BASE APP AUTHENTICATION');
-      console.log('[VARIANT 2] Using official wallet_connect method');
-      console.log('[VARIANT 2] ========================================');
+      console.log('[VARIANT 5] ========================================');
+      console.log('[VARIANT 5] 🔐 CREATING SIWE SIGNATURE');
+      console.log('[VARIANT 5] ========================================');
       
       const timestamp = Date.now();
-      // Generate strong nonce (12+ characters as required)
+      const addressLower = address.toLowerCase();
+      
+      // Generate strong nonce (12+ characters)
       const nonce = Math.random().toString(36).substring(2, 10) + 
                     Math.random().toString(36).substring(2, 6);
       
-      console.log('[VARIANT 2] Generated nonce:', nonce);
-      console.log('[VARIANT 2] Nonce length:', nonce.length);
-      console.log('[VARIANT 2] Chain ID: 0x2105 (Base mainnet)');
-      
-      // Call wallet_connect with signInWithEthereum capability
-      console.log('[VARIANT 2] Calling provider.request with wallet_connect...');
-      
-      const authResult = await provider.request({
-        method: 'wallet_connect',
-        params: [{
-          version: '1',
-          capabilities: {
-            signInWithEthereum: {
-              nonce: nonce,
-              chainId: '0x2105'  // Base mainnet
-            }
-          }
-        }]
-      });
-
-      console.log('[VARIANT 2] ========================================');
-      console.log('[VARIANT 2] 📥 Response received from Base App');
-      console.log('[VARIANT 2] Response type:', typeof authResult);
-      console.log('[VARIANT 2] Response keys:', Object.keys(authResult || {}));
-      console.log('[VARIANT 2] Full response:', JSON.stringify(authResult, null, 2));
-      console.log('[VARIANT 2] ========================================');
-
-      // Extract signature data from capabilities
-      const { accounts } = authResult;
-      if (!accounts || !accounts[0]) {
-        throw new Error('No accounts in Base App response');
-      }
-
-      const account = accounts[0];
-      console.log('[VARIANT 2] Account address:', account.address);
-      console.log('[VARIANT 2] Account capabilities:', Object.keys(account.capabilities || {}));
-
-      const siweData = account.capabilities?.signInWithEthereum;
-      if (!siweData) {
-        throw new Error('No signInWithEthereum capability in response');
-      }
-
-      console.log('[VARIANT 2] ========================================');
-      console.log('[VARIANT 2] ✅ SIWE Data extracted:');
-      console.log('[VARIANT 2]   Message length:', siweData.message?.length);
-      console.log('[VARIANT 2]   Signature length:', siweData.signature?.length);
-      console.log('[VARIANT 2]   Message preview:', siweData.message?.substring(0, 100) + '...');
-      console.log('[VARIANT 2] ========================================');
-
-      return {
-        signature: siweData.signature,
-        message: siweData.message,
-        address: account.address,
-        timestamp: timestamp,
-        nonce: nonce
-      };
-
-    } catch (error) {
-      console.error('[VARIANT 2] ========================================');
-      console.error('[VARIANT 2] ❌ BASE APP METHOD FAILED');
-      console.error('[VARIANT 2] Error name:', error.name);
-      console.error('[VARIANT 2] Error message:', error.message);
-      console.error('[VARIANT 2] Error code:', error.code);
-      console.error('[VARIANT 2] Full error:', error);
-      console.error('[VARIANT 2] ========================================');
-      throw error;
-    }
-  }
-
-  // === Signature Request for Authentication ===
-  async requestSignature(provider, address) {
-    try {
-      const timestamp = Date.now();
-      const nonce = Math.random().toString(36).substring(7);
       const domain = window.location.host;
       const uri = window.location.origin;
       const issuedAt = new Date(timestamp).toISOString();
       
-      // ÐŸÐ¾Ð»ÑƒÑ‡Ð°ÐµÐ¼ Ð°ÐºÑ‚ÑƒÐ°Ð»ÑŒÐ½Ñ‹Ð¹ chainId Ñ Ð¿Ñ€Ð¾Ð²Ð°Ð¹Ð´ÐµÑ€Ð°,
-      // Ñ‡Ñ‚Ð¾Ð±Ñ‹ Ð¾Ð½ Ñ‚Ð¾Ñ‡Ð½Ð¾ ÑÐ¾Ð²Ð¿Ð°Ð´Ð°Ð» Ñ ÑÐµÑ‚ÑŒÑŽ Ð² ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÐµ (Base App ÑÑ‚Ð¾ ÑÑ‚Ñ€Ð¾Ð³Ð¾ Ð¿Ñ€Ð¾Ð²ÐµÑ€ÑÐµÑ‚)
-      let chainIdNumeric = 8453; // Ð·Ð½Ð°Ñ‡ÐµÐ½Ð¸Ðµ Ð¿Ð¾ ÑƒÐ¼Ð¾Ð»Ñ‡Ð°Ð½Ð¸ÑŽ â€” Base mainnet
+      // Get chainId from provider
+      let chainIdNumeric = 8453;
       try {
         const chainIdRaw = await provider.request({ method: 'eth_chainId' });
         if (typeof chainIdRaw === 'string') {
@@ -401,15 +357,14 @@ class WalletManager {
           chainIdNumeric = chainIdRaw;
         }
       } catch (e) {
-        console.warn('[Wallet] Could not read chainId, falling back to Base mainnet (8453)', e);
+        console.warn('[VARIANT 5] Could not read chainId, using default 8453');
       }
       
-      // Ð¡Ñ‚Ñ€Ð¾Ð³Ð¸Ð¹ Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚ SIWE (EIPâ€‘4361), Ð¼Ð°ÐºÑÐ¸Ð¼Ð°Ð»ÑŒÐ½Ð¾ Ð±Ð»Ð¸Ð·ÐºÐ¸Ð¹ Ðº Ð¾Ñ„Ð¸Ñ†Ð¸Ð°Ð»ÑŒÐ½Ð¾Ð¼Ñƒ Ð¿Ñ€Ð¸Ð¼ÐµÑ€Ñƒ.
-      // ÐÐµÐºÐ¾Ñ‚Ð¾Ñ€Ñ‹Ðµ ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÐ¸ (Ð² Ñ‚.Ñ‡. Base/Coinbase) Ð¿Ð°Ñ€ÑÑÑ‚ ÐµÐ³Ð¾ Ð¸ Ð¾Ñ‚ÐºÐ»Ð¾Ð½ÑÑŽÑ‚ Ð½ÐµÑÑ‚Ð°Ð½Ð´Ð°Ñ€Ñ‚Ð½Ñ‹Ðµ Ð²Ð°Ñ€Ð¸Ð°Ð½Ñ‚Ñ‹.
+      // Standard SIWE format (EIP-4361)
       const message = `${domain} wants you to sign in with your Ethereum account:
-${address}
+${addressLower}
 
-Sign in to play Base 2048 on the Base network.
+Sign in to Base 2048
 
 URI: ${uri}
 Version: 1
@@ -417,29 +372,47 @@ Chain ID: ${chainIdNumeric}
 Nonce: ${nonce}
 Issued At: ${issuedAt}`;
 
-      console.log('[Wallet] Requesting signature...');
-      console.log('[Wallet] SIWE Message:', message);
+      console.log('[VARIANT 5] ========================================');
+      console.log('[VARIANT 5] SIWE Message:');
+      console.log(message);
+      console.log('[VARIANT 5] ========================================');
+      console.log('[VARIANT 5] Message details:');
+      console.log('[VARIANT 5]   Domain:', domain);
+      console.log('[VARIANT 5]   Address:', addressLower);
+      console.log('[VARIANT 5]   Chain ID:', chainIdNumeric);
+      console.log('[VARIANT 5]   Nonce:', nonce);
+      console.log('[VARIANT 5]   Nonce length:', nonce.length);
+      console.log('[VARIANT 5] ========================================');
+      
+      console.log('[VARIANT 5] Calling personal_sign...');
       
       const signature = await provider.request({
         method: 'personal_sign',
-        params: [message, address]
+        params: [message, addressLower]
       });
 
-      console.log('[Wallet] Signature received');
+      console.log('[VARIANT 5] ========================================');
+      console.log('[VARIANT 5] ✅ SIGNATURE RECEIVED');
+      console.log('[VARIANT 5] Signature length:', signature?.length);
+      console.log('[VARIANT 5] Signature preview:', signature?.substring(0, 20) + '...');
+      console.log('[VARIANT 5] ========================================');
       
-      // Store signature data
-      const signatureData = {
+      return {
         signature,
         message,
-        address,
+        address: addressLower,
         timestamp,
         nonce
       };
 
-      return signatureData;
-
     } catch (error) {
-      console.error('[Wallet] Signature error:', error);
+      console.error('[VARIANT 5] ========================================');
+      console.error('[VARIANT 5] ❌ SIGNATURE FAILED');
+      console.error('[VARIANT 5] Error name:', error.name);
+      console.error('[VARIANT 5] Error message:', error.message);
+      console.error('[VARIANT 5] Error code:', error.code);
+      console.error('[VARIANT 5] Full error:', error);
+      console.error('[VARIANT 5] ========================================');
       
       if (error.code === 4001) {
         throw new Error('Signature rejected by user');
@@ -448,7 +421,6 @@ Issued At: ${issuedAt}`;
       throw error;
     }
   }
-
   async switchToBaseChain(provider, currentChainId) {
     const baseChainId = '0x2105'; // Base mainnet (8453)
     
@@ -484,108 +456,6 @@ Issued At: ${issuedAt}`;
     }
   }
 
-
-  // === Minimal SIWE (no statement) ===
-  async requestSignatureMinimal(provider, address) {
-    try {
-      const timestamp = Date.now();
-      const nonce = Math.random().toString(36).substring(2, 10) + 
-                    Math.random().toString(36).substring(2, 6);
-      
-      const domain = window.location.host;
-      const uri = window.location.origin;
-      const issuedAt = new Date(timestamp).toISOString();
-      
-      let chainIdNumeric = 8453;
-      try {
-        const chainIdRaw = await provider.request({ method: 'eth_chainId' });
-        if (typeof chainIdRaw === 'string') {
-          chainIdNumeric = parseInt(chainIdRaw, 16);
-        } else if (typeof chainIdRaw === 'number') {
-          chainIdNumeric = chainIdRaw;
-        }
-      } catch (e) {
-        console.warn('[Wallet] Could not read chainId');
-      }
-      
-      // MINIMAL SIWE - NO STATEMENT LINE (some apps reject statement)
-      const message = `${domain} wants you to sign in with your Ethereum account:
-${address}
-
-URI: ${uri}
-Version: 1
-Chain ID: ${chainIdNumeric}
-Nonce: ${nonce}
-Issued At: ${issuedAt}`;
-
-      console.log('[Wallet] ========================================');
-      console.log('[Wallet] MINIMAL SIWE (no statement):');
-      console.log(message);
-      console.log('[Wallet] ========================================');
-      
-      const signature = await provider.request({
-        method: 'personal_sign',
-        params: [message, address]
-      });
-
-      console.log('[Wallet] ✓ Minimal SIWE signature received');
-      
-      return {
-        signature,
-        message,
-        address,
-        timestamp,
-        nonce
-      };
-
-    } catch (error) {
-      console.error('[Wallet] ✗ Minimal SIWE error:', error);
-      throw error;
-    }
-  }
-
-  // === Simple Text Signature ===
-  async requestSignatureSimple(provider, address) {
-    try {
-      const timestamp = Date.now();
-      const nonce = Math.random().toString(36).substring(2, 10) + 
-                    Math.random().toString(36).substring(2, 6);
-      
-      const domain = window.location.host;
-      const issuedAt = new Date(timestamp).toISOString();
-      
-      // VERY SIMPLE FORMAT (last resort for strict apps)
-      const message = `Sign in to ${domain}
-
-Address: ${address}
-Time: ${issuedAt}
-Nonce: ${nonce}`;
-
-      console.log('[Wallet] ========================================');
-      console.log('[Wallet] SIMPLE TEXT signature:');
-      console.log(message);
-      console.log('[Wallet] ========================================');
-      
-      const signature = await provider.request({
-        method: 'personal_sign',
-        params: [message, address]
-      });
-
-      console.log('[Wallet] ✓ Simple text signature received');
-      
-      return {
-        signature,
-        message,
-        address,
-        timestamp,
-        nonce
-      };
-
-    } catch (error) {
-      console.error('[Wallet] ✗ Simple text error:', error);
-      throw error;
-    }
-  }
   async disconnect() {
     try {
       // Disconnect WalletConnect if active
