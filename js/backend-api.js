@@ -64,7 +64,7 @@ class BackendAPI {
         throw new Error(data.message || data.error || 'Failed to submit score');
       }
 
-      console.log('[BackendAPI] ✓ Score submitted:', data);
+      console.log('[BackendAPI] âœ“ Score submitted:', data);
       return data;
 
     } catch (error) {
@@ -90,7 +90,7 @@ class BackendAPI {
         throw new Error(data.message || data.error || 'Failed to fetch leaderboard');
       }
 
-      console.log('[BackendAPI] ✓ Leaderboard fetched:', data.count, 'players');
+      console.log('[BackendAPI] âœ“ Leaderboard fetched:', data.count, 'players');
       return data.leaderboard;
 
     } catch (error) {
@@ -119,7 +119,7 @@ class BackendAPI {
         throw new Error(data.message || data.error || 'Failed to fetch player score');
       }
 
-      console.log('[BackendAPI] ✓ Player score fetched:', data.data);
+      console.log('[BackendAPI] âœ“ Player score fetched:', data.data);
       return data.data;
 
     } catch (error) {
@@ -150,17 +150,33 @@ class BackendAPI {
       console.log('[BackendAPI]   Message to sign:');
       console.log('[BackendAPI]     "' + message + '"');
       console.log('[BackendAPI]   Message length:', message.length);
-      console.log('[BackendAPI]   Wallet method: personal_sign');
-      console.log('[BackendAPI]   Params: [message, addressLower]');
       console.log('[BackendAPI] ==========================================');
+
+      // Wait for ethers.js
+      if (typeof window.ethers === 'undefined') {
+        console.log('[BackendAPI] Waiting for ethers.js...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (typeof window.ethers === 'undefined') {
+          throw new Error('ethers.js not loaded');
+        }
+      }
+
+      // Convert message to hex format (required by personal_sign)
+      const messageHex = window.ethers.utils.hexlify(
+        window.ethers.utils.toUtf8Bytes(message)
+      );
+
+      console.log('[BackendAPI]   Message hex:', messageHex.substring(0, 50) + '...');
+      console.log('[BackendAPI]   Wallet method: personal_sign');
+      console.log('[BackendAPI]   Params: [messageHex, addressLower]');
 
       const signature = await provider.request({
         method: 'personal_sign',
-        params: [message, addressLower]
+        params: [messageHex, addressLower]
       });
 
       console.log('[BackendAPI] ==========================================');
-      console.log('[BackendAPI] ✓ SIGNATURE CREATED:');
+      console.log('[BackendAPI] SUCCESS - SIGNATURE CREATED:');
       console.log('[BackendAPI]   Signature:', signature);
       console.log('[BackendAPI]   Timestamp:', timestamp);
       console.log('[BackendAPI]   Address:', addressLower);
@@ -179,6 +195,7 @@ class BackendAPI {
       throw error;
     }
   }
+
 
   /**
    * Check if backend is available
