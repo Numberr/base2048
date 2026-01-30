@@ -647,37 +647,29 @@ async function submitScoreToBackend(finalScore) {
       score: finalScore
     });
     
-    // Request signature for score submission
-    const signatureResult = await backendAPI.requestScoreSignature(
-      provider,
-      address,
-      finalScore
-    );
+    // Try to get existing signature from login
+    const existingSignature = walletManager.getSignature();
     
-    console.log('[Game] ==========================================');
-    console.log('[Game] Signature result received:');
-    console.log('[Game]   Type:', typeof signatureResult);
-    console.log('[Game]   Keys:', Object.keys(signatureResult || {}));
-    console.log('[Game]   signature:', signatureResult?.signature);
-    console.log('[Game]   timestamp:', signatureResult?.timestamp);
-    console.log('[Game]   message:', signatureResult?.message);
-    console.log('[Game] ==========================================');
+    if (!existingSignature || !walletManager.isSignatureValid()) {
+      throw new Error('No valid signature found. Please reconnect wallet.');
+    }
     
-    const { signature, timestamp, message } = signatureResult;
+    console.log('[Game] Using existing signature from login');
+    const { signature, timestamp, message } = existingSignature;
     
     console.log('[Game] Destructured values:');
     console.log('[Game]   signature:', signature);
     console.log('[Game]   timestamp:', timestamp);
     console.log('[Game]   message:', message);
     
-    // Submit to backend
+    // Submit to backend with actual score
     const result = await backendAPI.submitScore(
       address,
       playerName,
-      finalScore,
-      signature,
-      timestamp,
-      message  // Pass the exact message that was signed
+      finalScore,  // This is the actual score we want to submit
+      signature,   // Signature from login
+      timestamp,   // Timestamp from login
+      message      // Message from login (contains "Sign in to Base 2048")
     );
     
     console.log('[Game] Ã¢Å“â€œ Score submitted to backend:', result);
