@@ -148,40 +148,69 @@ class BackendAPI {
         }
       }
       
-      // Use checksum address (EIP-55)
+      // IMPORTANT: Use checksum address (EIP-55) for SIWE
       const checksumAddress = window.ethers.utils.getAddress(address);
+      
+      const domain = window.location.host;
+      const uri = window.location.origin;
+      
+      // Get chainId
+      let chainIdNumeric = 8453;
+      try {
+        const chainIdRaw = await provider.request({ method: 'eth_chainId' });
+        chainIdNumeric = typeof chainIdRaw === 'string' ? parseInt(chainIdRaw, 16) : chainIdRaw;
+      } catch (e) {
+        console.log('[BackendAPI] Using default chainId 8453');
+      }
+      
+      // Generate nonce (minimum 8 characters, alphanumeric)
+      const nonce = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+      
+      // ISO 8601 format
+      const issuedAt = new Date(timestamp).toISOString();
+      
+      // Statement - ONLY DIFFERENCE from wallet.js
+      const statement = `Submit score: ${score}`;
+      
+      // Create SIWE message according to EIP-4361
+      // CRITICAL: Address must be in checksum format (EIP-55)
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${checksumAddress}
+
+${statement}
+
+URI: ${uri}
+Version: 1
+Chain ID: ${chainIdNumeric}
+Nonce: ${nonce}
+Issued At: ${issuedAt}`;
+
+      console.log('[BackendAPI] ========================================');
+      console.log('[BackendAPI] SIWE Message:');
+      console.log(message);
+      console.log('[BackendAPI] ========================================');
+      
+      // Pass message as plain string - provider will handle hex conversion
       const addressLower = address.toLowerCase();
       
-      // Simple text message (not SIWE) - like Pixotchi Airdrop
-      const message = `Submit Base 2048 Score
-
-Score: ${score}
-Wallet: ${checksumAddress}
-Timestamp: ${timestamp}
-
-By signing this message, you confirm ownership of this wallet and submit your game score to the leaderboard.`;
-
-      console.log('[BackendAPI] ==========================================');
-      console.log('[BackendAPI] Score submission message:');
-      console.log(message);
-      console.log('[BackendAPI] ==========================================');
-
       const signature = await provider.request({
         method: 'personal_sign',
         params: [message, addressLower]
       });
 
-      console.log('[BackendAPI] ✓ Signature created:', signature.substring(0, 20) + '...');
+      console.log('[BackendAPI] ✓ Signature obtained:', signature.substring(0, 20) + '...');
       
-      return { signature, timestamp, message };
+      return { 
+        signature, 
+        message, 
+        address: addressLower, 
+        timestamp, 
+        nonce 
+      };
 
     } catch (error) {
-      console.error('[BackendAPI] Signature error:', error);
-      
-      if (error.code === 4001) {
-        throw new Error('Signature rejected by user');
-      }
-      
+      console.error('[BackendAPI] ✗ Signature failed:', error.message, error.code);
+      if (error.code === 4001) throw new Error('Signature rejected by user');
       throw error;
     }
   }
