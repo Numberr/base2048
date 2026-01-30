@@ -139,17 +139,56 @@ class BackendAPI {
     try {
       const timestamp = Date.now();
       const addressLower = address.toLowerCase();
-      const message = `Submit score: ${score} for ${addressLower} at ${timestamp}`;
+      
+      // Wait for ethers.js
+      if (typeof window.ethers === 'undefined') {
+        console.log('[BackendAPI] Waiting for ethers.js...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (typeof window.ethers === 'undefined') {
+          throw new Error('ethers.js not loaded');
+        }
+      }
+      
+      // Use checksum address for SIWE
+      const checksumAddress = window.ethers.utils.getAddress(address);
+      
+      const domain = window.location.host;
+      const uri = window.location.origin;
+      
+      // Get chainId
+      let chainIdNumeric = 8453;
+      try {
+        const chainIdRaw = await provider.request({ method: 'eth_chainId' });
+        chainIdNumeric = typeof chainIdRaw === 'string' ? parseInt(chainIdRaw, 16) : chainIdRaw;
+      } catch (e) {
+        console.log('[BackendAPI] Using default chainId 8453');
+      }
+      
+      // Generate nonce
+      const nonce = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+      
+      // ISO 8601 format
+      const issuedAt = new Date(timestamp).toISOString();
+      
+      // Create SIWE message for score submission
+      const statement = `Submit score: ${score}`;
+      
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${checksumAddress}
+
+${statement}
+
+URI: ${uri}
+Version: 1
+Chain ID: ${chainIdNumeric}
+Nonce: ${nonce}
+Issued At: ${issuedAt}`;
 
       console.log('[BackendAPI] ==========================================');
-      console.log('[BackendAPI] CREATING SIGNATURE:');
-      console.log('[BackendAPI]   Address:', addressLower);
-      console.log('[BackendAPI]   Score:', score);
-      console.log('[BackendAPI]   Timestamp:', timestamp);
-      console.log('[BackendAPI]   Message to sign:', message);
+      console.log('[BackendAPI] SIWE Message for score submission:');
+      console.log(message);
       console.log('[BackendAPI] ==========================================');
 
-      // Pass message as plain string - provider will handle hex conversion
       const signature = await provider.request({
         method: 'personal_sign',
         params: [message, addressLower]
