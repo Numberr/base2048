@@ -138,7 +138,6 @@ class BackendAPI {
   async requestScoreSignature(provider, address, score) {
     try {
       const timestamp = Date.now();
-      const addressLower = address.toLowerCase();
       
       // Wait for ethers.js
       if (typeof window.ethers === 'undefined') {
@@ -149,43 +148,21 @@ class BackendAPI {
         }
       }
       
-      // Use checksum address for SIWE
+      // Use checksum address (EIP-55)
       const checksumAddress = window.ethers.utils.getAddress(address);
+      const addressLower = address.toLowerCase();
       
-      const domain = window.location.host;
-      const uri = window.location.origin;
-      
-      // Get chainId
-      let chainIdNumeric = 8453;
-      try {
-        const chainIdRaw = await provider.request({ method: 'eth_chainId' });
-        chainIdNumeric = typeof chainIdRaw === 'string' ? parseInt(chainIdRaw, 16) : chainIdRaw;
-      } catch (e) {
-        console.log('[BackendAPI] Using default chainId 8453');
-      }
-      
-      // Generate nonce
-      const nonce = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-      
-      // ISO 8601 format
-      const issuedAt = new Date(timestamp).toISOString();
-      
-      // Create SIWE message for score submission
-      const statement = `Submit score: ${score}`;
-      
-      const message = `${domain} wants you to sign in with your Ethereum account:
-${checksumAddress}
+      // Simple text message (not SIWE) - like Pixotchi Airdrop
+      const message = `Submit Base 2048 Score
 
-${statement}
+Score: ${score}
+Wallet: ${checksumAddress}
+Timestamp: ${timestamp}
 
-URI: ${uri}
-Version: 1
-Chain ID: ${chainIdNumeric}
-Nonce: ${nonce}
-Issued At: ${issuedAt}`;
+By signing this message, you confirm ownership of this wallet and submit your game score to the leaderboard.`;
 
       console.log('[BackendAPI] ==========================================');
-      console.log('[BackendAPI] SIWE Message for score submission:');
+      console.log('[BackendAPI] Score submission message:');
       console.log(message);
       console.log('[BackendAPI] ==========================================');
 
