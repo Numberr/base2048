@@ -174,19 +174,6 @@ class WalletManager {
       const timestamp = Date.now();
       const addressLower = address.toLowerCase();
       
-      // Wait for SIWE library to load
-      if (typeof window.siwe === 'undefined') {
-        console.log('[V5.1] Waiting for SIWE library...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        if (typeof window.siwe === 'undefined') {
-          throw new Error('SIWE library not loaded');
-        }
-      }
-
-      console.log('[V5.1] ========================================');
-      console.log('[V5.1] CREATING SIWE MESSAGE');
-      console.log('[V5.1] Address:', addressLower);
-      
       const domain = window.location.host;
       const uri = window.location.origin;
       
@@ -196,53 +183,52 @@ class WalletManager {
         const chainIdRaw = await provider.request({ method: 'eth_chainId' });
         chainIdNumeric = typeof chainIdRaw === 'string' ? parseInt(chainIdRaw, 16) : chainIdRaw;
       } catch (e) {
-        console.log('[V5.1] Using default chainId 8453');
+        console.log('[Wallet] Using default chainId 8453');
       }
       
-      // Create SIWE message using library
-      const siweMessage = new window.siwe.SiweMessage({
-        domain,
-        address: addressLower,
-        statement: 'Sign in to Base 2048',
-        uri,
-        version: '1',
-        chainId: chainIdNumeric,
-        nonce: window.siwe.generateNonce(),
-        issuedAt: new Date(timestamp).toISOString()
-      });
+      // Generate nonce (minimum 8 characters)
+      const nonce = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
       
-      // Get properly formatted message text
-      const message = siweMessage.prepareMessage();
+      // ISO 8601 format
+      const issuedAt = new Date(timestamp).toISOString();
       
-      console.log('[V5.1] SIWE message created:');
-      console.log('[V5.1]   Domain:', domain);
-      console.log('[V5.1]   Chain ID:', chainIdNumeric);
-      console.log('[V5.1]   Nonce:', siweMessage.nonce);
-      console.log('[V5.1] Message to sign:');
+      // Statement
+      const statement = 'Sign in to Base 2048';
+      
+      // Create SIWE message according to EIP-4361
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${addressLower}
+
+${statement}
+
+URI: ${uri}
+Version: 1
+Chain ID: ${chainIdNumeric}
+Nonce: ${nonce}
+Issued At: ${issuedAt}`;
+
+      console.log('[Wallet] ========================================');
+      console.log('[Wallet] SIWE Message:');
       console.log(message);
-      console.log('[V5.1] ========================================');
+      console.log('[Wallet] ========================================');
       
       const signature = await provider.request({
         method: 'personal_sign',
         params: [message, addressLower]
       });
 
-      console.log('[V5.1] ========================================');
-      console.log('[V5.1] SUCCESS - SIGNATURE CREATED:');
-      console.log('[V5.1]   Signature:', signature.substring(0, 20) + '...');
-      console.log('[V5.1]   Timestamp:', timestamp);
-      console.log('[V5.1] ========================================');
+      console.log('[Wallet] ✓ Signature obtained:', signature.substring(0, 20) + '...');
       
       return { 
         signature, 
         message, 
         address: addressLower, 
         timestamp, 
-        nonce: siweMessage.nonce 
+        nonce 
       };
 
     } catch (error) {
-      console.error('[V5.1] ERROR - Signature failed:', error.message, error.code);
+      console.error('[Wallet] ✗ Signature failed:', error.message, error.code);
       if (error.code === 4001) throw new Error('Signature rejected by user');
       throw error;
     }
