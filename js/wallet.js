@@ -224,12 +224,19 @@ Issued At: ${issuedAt}`;
       console.log(message);
       console.log('[Wallet] ========================================');
       
+      // Convert message to hex format (required by personal_sign)
+      const messageHex = window.ethers.utils.hexlify(
+        window.ethers.utils.toUtf8Bytes(message)
+      );
+      
+      console.log('[Wallet] Message hex:', messageHex.substring(0, 50) + '...');
+      
       // personal_sign expects lowercase address
       const addressLower = address.toLowerCase();
       
       const signature = await provider.request({
         method: 'personal_sign',
-        params: [message, addressLower]
+        params: [messageHex, addressLower]  // ← hex message
       });
 
       console.log('[Wallet] ✓ Signature obtained:', signature.substring(0, 20) + '...');
