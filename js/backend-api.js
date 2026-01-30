@@ -143,45 +143,19 @@ class BackendAPI {
 
       console.log('[BackendAPI] ==========================================');
       console.log('[BackendAPI] CREATING SIGNATURE:');
-      console.log('[BackendAPI]   Address (input):', address);
-      console.log('[BackendAPI]   Address (lowercase):', addressLower);
+      console.log('[BackendAPI]   Address:', addressLower);
       console.log('[BackendAPI]   Score:', score);
       console.log('[BackendAPI]   Timestamp:', timestamp);
-      console.log('[BackendAPI]   Message to sign:');
-      console.log('[BackendAPI]     "' + message + '"');
-      console.log('[BackendAPI]   Message length:', message.length);
+      console.log('[BackendAPI]   Message to sign:', message);
       console.log('[BackendAPI] ==========================================');
 
-      // Wait for ethers.js
-      if (typeof window.ethers === 'undefined') {
-        console.log('[BackendAPI] Waiting for ethers.js...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        if (typeof window.ethers === 'undefined') {
-          throw new Error('ethers.js not loaded');
-        }
-      }
-
-      // Convert message to hex format (required by personal_sign)
-      const messageHex = window.ethers.utils.hexlify(
-        window.ethers.utils.toUtf8Bytes(message)
-      );
-
-      console.log('[BackendAPI]   Message hex:', messageHex.substring(0, 50) + '...');
-      console.log('[BackendAPI]   Wallet method: personal_sign');
-      console.log('[BackendAPI]   Params: [messageHex, addressLower]');
-
+      // Pass message as plain string - provider will handle hex conversion
       const signature = await provider.request({
         method: 'personal_sign',
-        params: [messageHex, addressLower]
+        params: [message, addressLower]
       });
 
-      console.log('[BackendAPI] ==========================================');
-      console.log('[BackendAPI] SUCCESS - SIGNATURE CREATED:');
-      console.log('[BackendAPI]   Signature:', signature);
-      console.log('[BackendAPI]   Timestamp:', timestamp);
-      console.log('[BackendAPI]   Address:', addressLower);
-      console.log('[BackendAPI]   Message:', message);
-      console.log('[BackendAPI] ==========================================');
+      console.log('[BackendAPI] ✓ Signature created:', signature.substring(0, 20) + '...');
       
       return { signature, timestamp, message };
 
