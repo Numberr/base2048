@@ -118,7 +118,7 @@ class WalletManager {
   async connect(wallet) {
     try {
       console.log('[V5.1] ========================================');
-      console.log('[V5.1] 🚀 CONNECTING:', wallet.name);
+      console.log('[V5.1] ðŸš€ CONNECTING:', wallet.name);
       console.log('[V5.1] Is Base App:', this.isBaseApp(wallet));
       console.log('[V5.1] ========================================');
       
@@ -132,14 +132,14 @@ class WalletManager {
       if (!accounts || accounts.length === 0) throw new Error('No accounts');
 
       const address = accounts[0];
-      console.log('[V5.1] ✅ Connected:', address);
+      console.log('[V5.1] âœ… Connected:', address);
 
       const chainId = await provider.request({ method: 'eth_chainId' });
       await this.switchToBaseChain(provider, chainId);
 
-      console.log('[V5.1] 🔐 Requesting signature...');
+      console.log('[V5.1] ðŸ” Requesting signature...');
       const signature = await this.requestSignature(provider, address);
-      console.log('[V5.1] ✅ Signature obtained!');
+      console.log('[V5.1] âœ… Signature obtained!');
 
       await contractManager.init(provider);
       await this.checkPlayerName(address);
@@ -151,7 +151,7 @@ class WalletManager {
       this.saveConnection(address, wallet.name, signature);
       this.subscribeToEvents(provider);
 
-      console.log('[V5.1] ✅ COMPLETE - Name:', this.playerName || '(none)');
+      console.log('[V5.1] âœ… COMPLETE - Name:', this.playerName || '(none)');
       
       return { 
         address, icon: wallet.icon, signature,
@@ -159,7 +159,7 @@ class WalletManager {
       };
 
     } catch (error) {
-      console.error('[V5.1] ❌ FAILED:', error.message, 'Code:', error.code);
+      console.error('[V5.1] âŒ FAILED:', error.message, 'Code:', error.code);
       throw new Error(error.code === 4001 ? 'Connection rejected' : error.message);
     }
   }
@@ -173,45 +173,81 @@ class WalletManager {
     try {
       const timestamp = Date.now();
       const addressLower = address.toLowerCase();
-      const nonce = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
+      
+      // Wait for SIWE library to load
+      if (typeof window.siwe === 'undefined') {
+        console.log('[V5.1] Waiting for SIWE library...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (typeof window.siwe === 'undefined') {
+          throw new Error('SIWE library not loaded');
+        }
+      }
+
+      console.log('[V5.1] ========================================');
+      console.log('[V5.1] CREATING SIWE MESSAGE');
+      console.log('[V5.1] Address:', addressLower);
+      
       const domain = window.location.host;
       const uri = window.location.origin;
-      const issuedAt = new Date(timestamp).toISOString();
       
+      // Get chainId
       let chainIdNumeric = 8453;
       try {
         const chainIdRaw = await provider.request({ method: 'eth_chainId' });
         chainIdNumeric = typeof chainIdRaw === 'string' ? parseInt(chainIdRaw, 16) : chainIdRaw;
-      } catch (e) {}
+      } catch (e) {
+        console.log('[V5.1] Using default chainId 8453');
+      }
       
-      const message = `${domain} wants you to sign in with your Ethereum account:
-${addressLower}
-
-Sign in to Base 2048
-
-URI: ${uri}
-Version: 1
-Chain ID: ${chainIdNumeric}
-Nonce: ${nonce}
-Issued At: ${issuedAt}`;
-
-      console.log('[V5.1] SIWE - nonce:', nonce.length, 'chars, chainId:', chainIdNumeric);
+      // Create SIWE message using library
+      const siweMessage = new window.siwe.SiweMessage({
+        domain,
+        address: addressLower,
+        statement: 'Sign in to Base 2048',
+        uri,
+        version: '1',
+        chainId: chainIdNumeric,
+        nonce: window.siwe.generateNonce(),
+        issuedAt: new Date(timestamp).toISOString()
+      });
+      
+      // Get properly formatted message text
+      const message = siweMessage.prepareMessage();
+      
+      console.log('[V5.1] SIWE message created:');
+      console.log('[V5.1]   Domain:', domain);
+      console.log('[V5.1]   Chain ID:', chainIdNumeric);
+      console.log('[V5.1]   Nonce:', siweMessage.nonce);
+      console.log('[V5.1] Message to sign:');
+      console.log(message);
+      console.log('[V5.1] ========================================');
       
       const signature = await provider.request({
         method: 'personal_sign',
         params: [message, addressLower]
       });
 
-      console.log('[V5.1] Signature:', signature.substring(0, 20) + '...', `(${signature.length} chars)`);
+      console.log('[V5.1] ========================================');
+      console.log('[V5.1] SUCCESS - SIGNATURE CREATED:');
+      console.log('[V5.1]   Signature:', signature.substring(0, 20) + '...');
+      console.log('[V5.1]   Timestamp:', timestamp);
+      console.log('[V5.1] ========================================');
       
-      return { signature, message, address: addressLower, timestamp, nonce };
+      return { 
+        signature, 
+        message, 
+        address: addressLower, 
+        timestamp, 
+        nonce: siweMessage.nonce 
+      };
 
     } catch (error) {
-      console.error('[V5.1] ❌ Signature failed:', error.message, error.code);
+      console.error('[V5.1] ERROR - Signature failed:', error.message, error.code);
       if (error.code === 4001) throw new Error('Signature rejected by user');
       throw error;
     }
   }
+
 
   async checkPlayerName(address) {
     try {
