@@ -172,7 +172,18 @@ class WalletManager {
   async requestSignature(provider, address) {
     try {
       const timestamp = Date.now();
-      const addressLower = address.toLowerCase();
+      
+      // Wait for ethers.js
+      if (typeof window.ethers === 'undefined') {
+        console.log('[Wallet] Waiting for ethers.js...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (typeof window.ethers === 'undefined') {
+          throw new Error('ethers.js not loaded');
+        }
+      }
+      
+      // IMPORTANT: Use checksum address (EIP-55) for SIWE
+      const checksumAddress = window.ethers.utils.getAddress(address);
       
       const domain = window.location.host;
       const uri = window.location.origin;
@@ -186,7 +197,7 @@ class WalletManager {
         console.log('[Wallet] Using default chainId 8453');
       }
       
-      // Generate nonce (minimum 8 characters)
+      // Generate nonce (minimum 8 characters, alphanumeric)
       const nonce = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
       
       // ISO 8601 format
@@ -196,8 +207,9 @@ class WalletManager {
       const statement = 'Sign in to Base 2048';
       
       // Create SIWE message according to EIP-4361
+      // CRITICAL: Address must be in checksum format (EIP-55)
       const message = `${domain} wants you to sign in with your Ethereum account:
-${addressLower}
+${checksumAddress}
 
 ${statement}
 
@@ -211,6 +223,9 @@ Issued At: ${issuedAt}`;
       console.log('[Wallet] SIWE Message:');
       console.log(message);
       console.log('[Wallet] ========================================');
+      
+      // personal_sign expects lowercase address
+      const addressLower = address.toLowerCase();
       
       const signature = await provider.request({
         method: 'personal_sign',
